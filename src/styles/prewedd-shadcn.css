@@ -1,0 +1,51 @@
+/* Maps shadcn/ui variables to the shared Prewedd token system. */
+
+:root {
+  --background: var(--color-surface);
+  --foreground: var(--color-neutral-900);
+  --card: var(--color-surface);
+  --card-foreground: var(--color-neutral-900);
+  --popover: var(--color-surface);
+  --popover-foreground: var(--color-neutral-900);
+  --primary: var(--color-primary);
+  --primary-foreground: #ffffff;
+  --secondary: var(--color-neutral-100);
+  --secondary-foreground: var(--color-neutral-900);
+  --muted: var(--color-neutral-100);
+  --muted-foreground: var(--color-neutral-400);
+  --accent: var(--color-neutral-100);
+  --accent-foreground: var(--color-neutral-900);
+  --destructive: var(--color-error);
+  --destructive-foreground: #ffffff;
+  --border: var(--color-border);
+  --input: var(--color-border);
+  --ring: var(--color-primary);
+  --radius: var(--radius-md);
+  --chart-1: var(--color-primary);
+  --chart-2: var(--color-secondary);
+  --chart-3: var(--color-accent);
+  --chart-4: var(--color-success);
+  --chart-5: var(--color-warning);
+}
+
+[data-theme="dark"] {
+  --background: var(--color-neutral-50);
+  --foreground: var(--color-neutral-900);
+  --card: var(--color-neutral-100);
+  --card-foreground: var(--color-neutral-900);
+  --popover: var(--color-neutral-100);
+  --popover-foreground: var(--color-neutral-900);
+  --primary: var(--color-primary);
+  --primary-foreground: #ffffff;
+  --secondary: var(--color-neutral-200);
+  --secondary-foreground: var(--color-neutral-900);
+  --muted: var(--color-neutral-200);
+  --muted-foreground: var(--color-neutral-400);
+  --accent: var(--color-neutral-200);
+  --accent-foreground: var(--color-neutral-900);
+  --destructive: var(--color-error);
+  --destructive-foreground: #ffffff;
+  --border: var(--color-border);
+  --input: var(--color-border);
+  --ring: var(--color-primary);
+}

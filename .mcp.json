@@ -1,12 +1,8 @@
 {
   "mcpServers": {
     "supabase": {
-      "url": "https://mcp.supabase.com/mcp?project_ref=YOUR_PROJECT_REF",
-      "note": "Replace YOUR_PROJECT_REF with your Supabase project ID from Settings > API"
-    },
-    "next-devtools": {
-      "command": "npx",
-      "args": ["-y", "next-devtools-mcp@latest"]
+      "type": "http",
+      "url": "https://mcp.supabase.com/mcp?project_ref=oljrnmgiaypdysmoaovo&features=docs%2Caccount%2Cdatabase%2Cdebugging%2Cdevelopment%2Cfunctions%2Cbranching%2Cstorage"
     }
   }
 }

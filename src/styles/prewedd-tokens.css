@@ -1,0 +1,226 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:is([data-theme="dark"] *));
+
+/* Shared Prewedd tokens extracted from Prewedd.os.
+   This file keeps the brand language but avoids app-specific naming. */
+
+@theme {
+  /* Brand */
+  --color-brand-50: #fdf2f8;
+  --color-brand-100: #fce7f3;
+  --color-brand-200: #fbcfe8;
+  --color-brand-300: #f9a8d4;
+  --color-brand-400: #f472b6;
+  --color-brand-500: #e8458b;
+  --color-brand-600: #db2777;
+  --color-brand-700: #be185d;
+
+  /* Primary palette */
+  --color-primary: #e8458b;
+  --color-primary-hover: #d63a7e;
+  --color-primary-active: #c43072;
+  --color-secondary: #c44bb5;
+  --color-secondary-hover: #b340a5;
+  --color-accent: #f27830;
+
+  /* Neutrals */
+  --color-neutral-50: #fff5f8;
+  --color-neutral-100: #f5e6eb;
+  --color-neutral-200: #e8d0d8;
+  --color-neutral-300: #b8a0a8;
+  --color-neutral-400: #7d6b74;
+  --color-neutral-500: #6b5660;
+  --color-neutral-600: #6b4d5a;
+  --color-neutral-700: #3d2b35;
+  --color-neutral-800: #2e1a23;
+  --color-neutral-900: #1a0e14;
+
+  /* Semantic */
+  --color-success: #22c55e;
+  --color-success-fill: #dcfce7;
+  --color-success-text: #15803d;
+  --color-warning: #f59e0b;
+  --color-warning-fill: #fef3c7;
+  --color-warning-text: #b45309;
+  --color-error: #ef4444;
+  --color-error-fill: #fee2e2;
+  --color-error-text: #dc2626;
+  --color-info: #3b82f6;
+  --color-info-fill: #f3e8ff;
+  --color-info-text: #9b59b6;
+
+  /* Temperature */
+  --color-hot: #e8458b;
+  --color-warm: #f2a65a;
+  --color-cold: #94a3b8;
+
+  /* Surfaces */
+  --color-surface: #ffffff;
+  --color-surface-alt: #fff5f8;
+  --color-surface-muted: #f5e6eb;
+  --color-border: #e8d0d8;
+  --color-placeholder: #b8a0a8;
+
+  /* Typography */
+  --font-heading: "Clash Display", "DM Sans", system-ui, sans-serif;
+  --font-sans: "DM Sans", system-ui, sans-serif;
+  --font-body: "DM Sans", system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  /* Radius */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-full: 9999px;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(26, 14, 20, 0.04);
+  --shadow-md: 0 4px 12px rgba(26, 14, 20, 0.06), 0 1px 3px rgba(26, 14, 20, 0.04);
+  --shadow-lg: 0 12px 32px rgba(26, 14, 20, 0.08), 0 4px 12px rgba(26, 14, 20, 0.04);
+  --shadow-xl: 0 24px 48px rgba(26, 14, 20, 0.12), 0 8px 16px rgba(26, 14, 20, 0.06);
+  --shadow-btn-primary: 0 4px 16px rgba(232, 69, 139, 0.25);
+  --shadow-btn-primary-hover: 0 6px 20px rgba(232, 69, 139, 0.35);
+  --shadow-btn-hero: 0 6px 24px rgba(232, 69, 139, 0.3);
+  --shadow-btn-hero-hover: 0 8px 32px rgba(232, 69, 139, 0.4);
+  --shadow-focus-ring: 0 0 0 4px rgba(232, 69, 139, 0.1);
+  --shadow-focus-ring-error: 0 0 0 4px rgba(220, 38, 38, 0.1);
+  --shadow-glow: 0 0 24px rgba(232, 69, 139, 0.15);
+
+  /* Layering */
+  --z-base: 0;
+  --z-dropdown: 50;
+  --z-sticky: 60;
+  --z-nav: 70;
+  --z-modal-backdrop: 80;
+  --z-modal: 90;
+  --z-toast: 95;
+  --z-tooltip: 100;
+
+  /* Motion */
+  --ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
+  --duration-fast: 150ms;
+  --duration-normal: 250ms;
+  --duration-slow: 350ms;
+
+  /* Layout */
+  --max-w-app: 1200px;
+
+  /* Animation aliases */
+  --animate-toast-enter: toast-enter 0.3s var(--ease-spring);
+  --animate-toast-exit: toast-exit 0.3s var(--ease-spring);
+  --animate-page-in: page-in 0.4s var(--ease-spring);
+  --animate-page-out: page-out 0.3s var(--ease-spring);
+  --animate-view-in: view-in 0.3s var(--ease-spring);
+  --animate-modal-in: modal-in 0.3s var(--ease-spring);
+  --animate-modal-out: modal-out 0.2s var(--ease-spring);
+  --animate-blob-breathe: blob-breathe 3s ease-in-out infinite;
+  --animate-shimmer: shimmer 1.5s ease-in-out infinite;
+  --animate-slide-up: slide-up 0.3s var(--ease-spring);
+  --animate-slide-down: slide-down 0.3s var(--ease-spring);
+  --animate-fade-in: fade-in 0.2s ease-out;
+  --animate-spin-slow: spin 3s linear infinite;
+}
+
+@keyframes toast-enter {
+  from { opacity: 0; transform: translateY(16px) scale(0.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes toast-exit {
+  from { opacity: 1; transform: translateY(0) scale(1); }
+  to { opacity: 0; transform: translateY(16px) scale(0.96); }
+}
+
+@keyframes page-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes page-out {
+  from { opacity: 1; transform: translateY(0); }
+  to { opacity: 0; transform: translateY(-8px); }
+}
+
+@keyframes view-in {
+  from { opacity: 0; transform: translateX(8px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes modal-in {
+  from { opacity: 0; transform: scale(0.95) translateY(8px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@keyframes modal-out {
+  from { opacity: 1; transform: scale(1) translateY(0); }
+  to { opacity: 0; transform: scale(0.95) translateY(8px); }
+}
+
+@keyframes blob-breathe {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slide-down {
+  from { opacity: 0; transform: translateY(-16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+[data-theme="dark"] {
+  --color-neutral-50: #1e1218;
+  --color-neutral-100: #2a1c24;
+  --color-neutral-200: #3d2b35;
+  --color-neutral-300: #5a4550;
+  --color-neutral-400: #8b7580;
+  --color-neutral-500: #a89098;
+  --color-neutral-700: #e0d0d8;
+  --color-neutral-900: #f5eef0;
+
+  --color-surface: #140c10;
+  --color-surface-alt: #1a1016;
+  --color-surface-muted: #221820;
+  --color-border: #3d2b35;
+
+  --color-success-fill: #0c2a18;
+  --color-success-text: #4ade80;
+  --color-warning-fill: #2a1e08;
+  --color-warning-text: #fbb040;
+  --color-error-fill: #2a0c0c;
+  --color-error-text: #f87171;
+  --color-info-fill: #1e0c2a;
+  --color-info-text: #c084fc;
+
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4), 0 1px 3px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.5), 0 4px 12px rgba(0, 0, 0, 0.3);
+  --shadow-xl: 0 24px 48px rgba(0, 0, 0, 0.6), 0 8px 16px rgba(0, 0, 0, 0.4);
+  --shadow-glow: 0 0 32px rgba(232, 69, 139, 0.2);
+}
+
+[data-theme="dark"] body {
+  background: var(--color-surface);
+  color: var(--color-neutral-700);
+}
+
+@property --glow-angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}

@@ -39,3 +39,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# dev server logs
+.next-dev*.log
+.next-dev*.err.log
+
+# supabase temp
+supabase/.temp/
