@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
-import { Search, X, ChevronRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Search, X, ChevronRight, UserPlus, Send, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const ROLES_LIST = [
@@ -111,10 +112,15 @@ export default function AdminRosterPage() {
       {/* Table area */}
       <div className={cn("flex flex-1 flex-col", selected && "hidden lg:flex")}>
         <div className="border-b border-border p-4">
-          <h1 className="text-lg font-semibold text-foreground">Team Roster</h1>
-          <p className="text-sm text-muted-foreground">
-            {shooters.length} shooter{shooters.length !== 1 ? "s" : ""} onboarded
-          </p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-lg font-semibold text-foreground">Team Roster</h1>
+              <p className="text-sm text-muted-foreground">
+                {shooters.length} shooter{shooters.length !== 1 ? "s" : ""} onboarded
+              </p>
+            </div>
+            <InviteShooterButton />
+          </div>
         </div>
 
         {/* Search + filter */}
@@ -651,6 +657,97 @@ function DetailPanel({
         </div>
       )}
     </div>
+  );
+}
+
+function InviteShooterButton() {
+  const [showForm, setShowForm] = useState(false);
+  const [email, setEmail] = useState("");
+  const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState(false);
+  const [error, setError] = useState("");
+
+  async function handleInvite(e: React.FormEvent) {
+    e.preventDefault();
+    if (!email.trim()) return;
+    setError("");
+    setSending(true);
+
+    const supabase = createClient();
+
+    // Send magic link — this creates the auth user on first use
+    const { error: otpError } = await supabase.auth.signInWithOtp({
+      email: email.trim(),
+      options: {
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
+      },
+    });
+
+    setSending(false);
+
+    if (otpError) {
+      setError(otpError.message);
+      return;
+    }
+
+    setSent(true);
+    setTimeout(() => {
+      setSent(false);
+      setShowForm(false);
+      setEmail("");
+    }, 3000);
+  }
+
+  if (sent) {
+    return (
+      <div className="flex items-center gap-1.5 text-xs font-medium text-success">
+        <Check className="size-3.5" />
+        Invite sent!
+      </div>
+    );
+  }
+
+  if (!showForm) {
+    return (
+      <Button
+        size="sm"
+        onClick={() => setShowForm(true)}
+        className="gap-1.5 bg-primary text-white hover:bg-primary-hover"
+      >
+        <UserPlus className="size-3.5" />
+        Invite Shooter
+      </Button>
+    );
+  }
+
+  return (
+    <form onSubmit={handleInvite} className="flex items-center gap-2">
+      <input
+        type="email"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        placeholder="shooter@email.com"
+        autoFocus
+        className="h-8 w-48 rounded-lg border border-border bg-background px-3 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+      />
+      <Button
+        type="submit"
+        size="sm"
+        disabled={sending || !email.trim()}
+        className="gap-1.5 bg-primary text-white hover:bg-primary-hover"
+      >
+        <Send className="size-3" />
+        {sending ? "..." : "Send"}
+      </Button>
+      <button
+        type="button"
+        onClick={() => { setShowForm(false); setEmail(""); setError(""); }}
+        className="rounded p-1 text-muted-foreground hover:text-foreground"
+      >
+        <X className="size-4" />
+      </button>
+      {error && <span className="text-[10px] text-error">{error}</span>}
+    </form>
   );
 }
 

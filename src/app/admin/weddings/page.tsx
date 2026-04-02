@@ -4,8 +4,13 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Plus, X, Calendar, MapPin } from "lucide-react";
+import { Plus, X, Calendar, MapPin, Bell } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+interface ShooterStatus {
+  brief_read: boolean;
+  quiz_passed: boolean;
+}
 
 interface Wedding {
   id: string;
@@ -19,12 +24,14 @@ interface Wedding {
   num_videographers: number;
   couples: { names: string } | null;
   assignment_count: number;
+  shooter_statuses: ShooterStatus[];
 }
 
 export default function AdminWeddingsPage() {
   const [weddings, setWeddings] = useState<Wedding[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
+  const [sendingReminders, setSendingReminders] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -35,23 +42,30 @@ export default function AdminWeddingsPage() {
     const supabase = createClient();
     const { data } = await supabase
       .from("weddings")
-      .select("id, date, venue_name, venue_address, status, services, package, num_photographers, num_videographers, couples(names), assignments(id)")
+      .select("id, date, venue_name, venue_address, status, services, package, num_photographers, num_videographers, couples(names), assignments(id, brief_read, quiz_passed)")
       .order("date", { ascending: true });
 
     if (data) {
-      const mapped: Wedding[] = data.map((w) => ({
-        id: w.id,
-        date: w.date,
-        venue_name: w.venue_name,
-        venue_address: w.venue_address,
-        status: w.status,
-        services: w.services,
-        package: w.package,
-        num_photographers: w.num_photographers || 0,
-        num_videographers: w.num_videographers || 0,
-        couples: w.couples as unknown as { names: string } | null,
-        assignment_count: Array.isArray(w.assignments) ? w.assignments.length : 0,
-      }));
+      const mapped: Wedding[] = data.map((w) => {
+        const assignments = Array.isArray(w.assignments) ? w.assignments : [];
+        return {
+          id: w.id,
+          date: w.date,
+          venue_name: w.venue_name,
+          venue_address: w.venue_address,
+          status: w.status,
+          services: w.services,
+          package: w.package,
+          num_photographers: w.num_photographers || 0,
+          num_videographers: w.num_videographers || 0,
+          couples: w.couples as unknown as { names: string } | null,
+          assignment_count: assignments.length,
+          shooter_statuses: assignments.map((a: { brief_read: boolean; quiz_passed: boolean }) => ({
+            brief_read: a.brief_read,
+            quiz_passed: a.quiz_passed,
+          })),
+        };
+      });
       setWeddings(mapped);
     }
     setLoading(false);
@@ -66,14 +80,30 @@ export default function AdminWeddingsPage() {
             {weddings.length} wedding{weddings.length !== 1 ? "s" : ""}
           </p>
         </div>
-        <Button
-          onClick={() => setShowCreate(true)}
-          className="gap-1.5 bg-primary text-white hover:bg-primary-hover"
-          size="sm"
-        >
-          <Plus className="size-3.5" />
-          Create Wedding
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            onClick={async () => {
+              setSendingReminders(true);
+              await fetch("/api/quiz-reminder", { method: "POST" });
+              setSendingReminders(false);
+            }}
+            disabled={sendingReminders}
+            variant="outline"
+            size="sm"
+            className="gap-1.5"
+          >
+            <Bell className="size-3.5" />
+            {sendingReminders ? "Sending..." : "Send Reminders"}
+          </Button>
+          <Button
+            onClick={() => setShowCreate(true)}
+            className="gap-1.5 bg-primary text-white hover:bg-primary-hover"
+            size="sm"
+          >
+            <Plus className="size-3.5" />
+            Create Wedding
+          </Button>
+        </div>
       </div>
 
       {/* Create form modal */}
@@ -107,6 +137,7 @@ export default function AdminWeddingsPage() {
                 <th className="hidden px-4 py-2.5 text-xs font-medium text-muted-foreground md:table-cell">Venue</th>
                 <th className="hidden px-4 py-2.5 text-xs font-medium text-muted-foreground lg:table-cell">Services</th>
                 <th className="px-4 py-2.5 text-xs font-medium text-muted-foreground">Staffing</th>
+                <th className="hidden px-4 py-2.5 text-xs font-medium text-muted-foreground md:table-cell">Quiz</th>
                 <th className="px-4 py-2.5 text-xs font-medium text-muted-foreground">Status</th>
               </tr>
             </thead>
@@ -166,6 +197,34 @@ export default function AdminWeddingsPage() {
                         {w.assignment_count} assigned
                       </span>
                     </div>
+                  </td>
+                  <td className="hidden px-4 py-3 md:table-cell">
+                    {w.shooter_statuses.length > 0 ? (
+                      <div className="flex items-center gap-1">
+                        {w.shooter_statuses.map((s, si) => (
+                          <span
+                            key={si}
+                            className={cn(
+                              "size-2.5 rounded-full",
+                              s.quiz_passed
+                                ? "bg-success"
+                                : s.brief_read
+                                  ? "bg-warning"
+                                  : "bg-muted-foreground/30"
+                            )}
+                            title={
+                              s.quiz_passed
+                                ? "Quiz passed"
+                                : s.brief_read
+                                  ? "Brief read, quiz pending"
+                                  : "Brief not read"
+                            }
+                          />
+                        ))}
+                      </div>
+                    ) : (
+                      <span className="text-[10px] text-muted-foreground">—</span>
+                    )}
                   </td>
                   <td className="px-4 py-3">
                     <span

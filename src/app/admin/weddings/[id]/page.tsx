@@ -368,7 +368,7 @@ export default function WeddingDetailPage({
         {/* Left column */}
         <div>
           {/* Service Details */}
-          <CollapsibleSection title="Service Details" defaultOpen>
+          <CollapsibleSection title="Service Details" id="wedding-service-details" defaultOpen>
             <div className="grid grid-cols-2 gap-3">
               <InfoRow icon={Camera} label="Services">
                 <EditableCell value={wedding.services || ""} onChange={(v) => updateWedding("services", v || null)} placeholder="Photo + Video" />
@@ -386,7 +386,7 @@ export default function WeddingDetailPage({
           </CollapsibleSection>
 
           {/* Staffing */}
-          <CollapsibleSection title={`Staffing — ${assignments.length} assigned`} defaultOpen>
+          <CollapsibleSection title={`Staffing — ${assignments.length} assigned`} id="wedding-staffing" defaultOpen>
             <div className="mb-3 grid grid-cols-3 gap-3">
               <div className="rounded-lg border border-border bg-card p-3 text-center">
                 <Camera className="mx-auto mb-1 size-4 text-primary" />
@@ -444,7 +444,7 @@ export default function WeddingDetailPage({
 
           {/* Couple Profile */}
           {couple && (
-            <CollapsibleSection title="Couple Profile">
+            <CollapsibleSection title="Couple Profile" id="wedding-couple-profile" defaultOpen>
               <div className="space-y-3">
                 <div className="grid grid-cols-2 gap-3">
                   <InfoRow icon={User} label="Names">
@@ -485,7 +485,7 @@ export default function WeddingDetailPage({
         {/* Right column */}
         <div>
           {/* Locations */}
-          <CollapsibleSection title="Locations" defaultOpen>
+          <CollapsibleSection title="Locations" id="wedding-locations" defaultOpen>
             <div className="space-y-3">
               <InfoRow icon={MapPin} label="Reception">
                 <EditableCell value={wedding.venue_name || ""} onChange={(v) => updateWedding("venue_name", v || null)} placeholder="Venue name" />
@@ -501,7 +501,7 @@ export default function WeddingDetailPage({
           </CollapsibleSection>
 
           {/* Logistics */}
-          <CollapsibleSection title="Logistics">
+          <CollapsibleSection title="Logistics" id="wedding-logistics" defaultOpen>
             <div className="grid grid-cols-2 gap-3">
               <InfoRow icon={User} label="Coordinator">
                 <EditableCell value={wedding.coordinator_name || ""} onChange={(v) => updateWedding("coordinator_name", v || null)} placeholder="Name" />
@@ -532,7 +532,7 @@ export default function WeddingDetailPage({
 
           {/* Documents */}
           {(wedding.timeline_couple_url || wedding.moodboard_url || wedding.family_checklist_url || wedding.timeline_internal_url) && (
-            <CollapsibleSection title="Documents">
+            <CollapsibleSection title="Documents" id="wedding-documents" defaultOpen>
               <div className="space-y-1.5">
                 {wedding.timeline_couple_url && <DocLink label="Couple Timeline" url={wedding.timeline_couple_url} />}
                 {wedding.timeline_internal_url && <DocLink label="Internal Timeline" url={wedding.timeline_internal_url} />}
@@ -544,7 +544,7 @@ export default function WeddingDetailPage({
 
           {/* Add-ons */}
           {wedding.add_ons && wedding.add_ons.length > 0 && (
-            <CollapsibleSection title="Add-Ons">
+            <CollapsibleSection title="Add-Ons" id="wedding-add-ons" defaultOpen>
               <div className="flex flex-wrap gap-1.5">
                 {wedding.add_ons.map((addon, i) => (
                   <span key={i} className="rounded-full border border-border bg-card px-2.5 py-0.5 text-xs text-foreground">{addon}</span>
