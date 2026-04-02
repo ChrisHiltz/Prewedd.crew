@@ -1,36 +1,93 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# PreWedd Crew
 
-## Getting Started
+Internal team platform for TLIC. Built with Next.js 16, Supabase, and Vercel.
 
-First, run the development server:
+## Setup
+
+### 1. Supabase (10 min)
+
+1. **supabase.com** → New Project → name it `prewedd`
+2. **SQL Editor** → paste `supabase/migrations/001_initial_schema.sql` → Run
+3. **Storage** → New Bucket → `headshots` → Public
+4. **Authentication** → Providers → Email → enable Magic Link
+5. **Settings** → API → copy **Project URL**, **anon key**, and **Project ID** (under Project ID)
+6. **resend.com** → sign up → copy API key
+
+### 2. Project Folder
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+mkdir prewedd-crew && cd prewedd-crew
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Copy this entire scaffold into the folder.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Open `.mcp.json` and replace `YOUR_PROJECT_REF` with your Supabase Project ID.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 3. Install Skills + MCP Servers
 
-## Learn More
+```bash
+# Install Vercel's official agent skills (React best practices + deployment)
+npx skills add https://github.com/vercel-labs/agent-skills --skill vercel-react-best-practices
 
-To learn more about Next.js, take a look at the following resources:
+# Install Anthropic's frontend-design skill (if not already bundled)
+# This may already be available as a bundled skill — check with /skills in Claude Code
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+The MCP servers (Supabase + Next.js DevTools) are configured in `.mcp.json` and will connect automatically when Claude Code starts. Supabase MCP will prompt you to log in via browser on first use.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### 4. Build
 
-## Deploy on Vercel
+```bash
+claude
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Then:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```
+/build-next
+```
+
+Fill in `.env.local` after step 1. Then keep going:
+
+```
+/build-next
+```
+
+17 steps. Claude builds, tests, advances. You provide oversight.
+
+**If something breaks:** Describe the error. Claude fixes and retests.
+
+**If context gets long:** `/compact` or `/clear` then `/build-next` — state is tracked in `docs/BUILD_STATE.md`.
+
+**To rerun a test:** `/test-step`
+
+**To jump to a step:** `/build-next 12`
+
+## The 17 Steps
+
+| # | What Gets Built | You Do |
+|---|-----------------|--------|
+| 1 | Project init, Next.js 16, Tailwind, Supabase deps | Fill in .env.local + .mcp.json |
+| 2 | Login page, magic link auth | Test with your email |
+| 3 | Role-based routing, layouts | Glance at nav |
+| 4 | Onboarding step 1 (basic info) | Try the form |
+| 5 | Onboarding steps 2-4 (roles, personality, skills) | Complete onboarding |
+| 6 | Shooter profile page | Quick look |
+| 7 | Admin team roster | Check roster |
+| 8 | Shooter calendar + date blocking | Block some dates |
+| 9 | Admin master calendar | Quick look |
+| 10 | Wedding creation + list | Create a test wedding |
+| 11 | Assignments + email notifications | Assign shooter, check email |
+| 12 | Shooter dashboard + weddings list | Verify as shooter |
+| 13 | Brief builder (couple + logistics) | Fill in test data |
+| 14 | Brief builder (timeline + quiz + publish) | Publish a brief |
+| 15 | Shooter brief view | Read the brief |
+| 16 | Pre-wedding quiz | Take the quiz |
+| 17 | Admin quiz visibility + reminders | Check admin dashboard |
+
+## Deploy
+
+```bash
+git init && git add -A && git commit -m "PreWedd Crew MVP"
+# Push to GitHub → Connect to Vercel → Set env vars → Done
+```
