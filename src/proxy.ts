@@ -103,8 +103,8 @@ export async function proxy(request: NextRequest) {
     }
   }
 
-  // Admins can access everything — redirect root to admin weddings
-  if (role === "admin" && pathname === "/") {
+  // Admins can access everything — redirect root and /admin to admin weddings
+  if (role === "admin" && (pathname === "/" || pathname === "/admin")) {
     const url = request.nextUrl.clone();
     url.pathname = "/admin/weddings";
     return NextResponse.redirect(url);
