@@ -80,7 +80,6 @@ export default function AdminCalendarPage() {
       supabase
         .from("shooter_profiles")
         .select("id, name, headshot_url, roles")
-        .eq("onboarding_completed", true)
         .order("name"),
       supabase
         .from("weddings")

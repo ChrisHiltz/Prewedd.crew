@@ -617,7 +617,7 @@ function AddShooterPanel({
   useEffect(() => {
     async function loadAvailable() {
       const supabase = createClient();
-      const { data: allShooters } = await supabase.from("shooter_profiles").select("id, name, headshot_url, roles").eq("onboarding_completed", true).order("name");
+      const { data: allShooters } = await supabase.from("shooter_profiles").select("id, name, headshot_url, roles").order("name");
       const { data: blockedData } = await supabase.from("blocked_dates").select("shooter_id").eq("date", weddingDate);
       const blockedIds = new Set(blockedData?.map((b) => b.shooter_id) || []);
       const assignedIds = new Set(assignedShooterIds);
