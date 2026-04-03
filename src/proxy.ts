@@ -43,8 +43,13 @@ export async function proxy(request: NextRequest) {
   if (publicPaths.some((p) => pathname.startsWith(p))) {
     // If already logged in, redirect away from login
     if (user && pathname === "/login") {
+      const { data: loginUserData } = await supabase
+        .from("users")
+        .select("role")
+        .eq("id", user.id)
+        .single();
       const url = request.nextUrl.clone();
-      url.pathname = "/dashboard";
+      url.pathname = loginUserData?.role === "admin" ? "/admin/weddings" : "/dashboard";
       return NextResponse.redirect(url);
     }
     return supabaseResponse;
