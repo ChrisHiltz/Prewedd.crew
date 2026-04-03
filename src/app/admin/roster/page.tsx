@@ -92,7 +92,6 @@ export default function AdminRosterPage() {
       const { data } = await supabase
         .from("shooter_profiles")
         .select("*")
-        .eq("onboarding_completed", true)
         .order("name");
 
       if (data) setShooters(data as Shooter[]);
