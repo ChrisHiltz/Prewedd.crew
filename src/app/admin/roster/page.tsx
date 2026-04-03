@@ -673,23 +673,52 @@ function InviteShooterButton() {
     setError("");
     setSending(true);
 
-    const supabase = createClient();
+    const trimmedEmail = email.trim();
+    const siteUrl = window.location.origin;
 
-    // Send magic link — this creates the auth user on first use
+    // Step 1: Send the magic link (creates the auth user on first use)
+    const supabase = createClient();
     const { error: otpError } = await supabase.auth.signInWithOtp({
-      email: email.trim(),
+      email: trimmedEmail,
       options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
+        emailRedirectTo: `${siteUrl}/auth/callback`,
       },
     });
 
-    setSending(false);
-
     if (otpError) {
       setError(otpError.message);
+      setSending(false);
       return;
     }
 
+    // Step 2: Send a warm welcome email via Resend with context
+    await fetch("/api/notify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        to: trimmedEmail,
+        subject: "Welcome to the team! Here's what's next",
+        html: `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 520px; margin: 0 auto; padding: 32px 24px;">
+  <div style="background: white; border-radius: 12px; padding: 32px 24px; border: 1px solid #e8d0d8;">
+    <h2 style="font-size: 22px; color: #2e1a23; margin: 0 0 16px;">Hey, welcome to the crew!</h2>
+    <p style="font-size: 15px; color: #6b5660; line-height: 1.6; margin: 0 0 12px;">You've been invited to join the TLIC team portal. This is where you'll manage your wedding assignments, review couple briefs, check your schedule, and prep for each wedding day.</p>
+    <p style="font-size: 15px; color: #6b5660; line-height: 1.6; margin: 0 0 12px;">Here's how it works:</p>
+    <ul style="font-size: 14px; color: #6b5660; line-height: 1.8; padding-left: 20px; margin: 0 0 16px;">
+      <li><strong style="color: #2e1a23;">Set up your profile</strong> - your roles, rates, and working style</li>
+      <li><strong style="color: #2e1a23;">Get assigned to weddings</strong> - you'll see the couple, venue, and your role</li>
+      <li><strong style="color: #2e1a23;">Review the brief</strong> - everything you need to know about the couple and the day</li>
+      <li><strong style="color: #2e1a23;">Take the quiz</strong> - quick check to make sure you're prepped and ready</li>
+      <li><strong style="color: #2e1a23;">Block your calendar</strong> - mark dates you're unavailable</li>
+    </ul>
+    <p style="font-size: 15px; color: #6b5660; line-height: 1.6; margin: 0 0 24px;">You should've also received a separate sign-in email with a magic link. Tap that link to get started. No passwords needed, ever.</p>
+    <p style="font-size: 15px; color: #6b5660; line-height: 1.6; margin: 0 0 4px;">Excited to have you on the team!</p>
+    <p style="font-size: 15px; color: #2e1a23; font-weight: 600; margin: 0;">- The TLIC Team</p>
+  </div>
+</div>`,
+      }),
+    });
+
+    setSending(false);
     setSent(true);
     setTimeout(() => {
       setSent(false);
