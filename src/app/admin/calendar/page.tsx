@@ -1,70 +1,156 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import Image from "next/image";
-import { createClient } from "@/lib/supabase/client";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { ROLE_FILTER_OPTIONS as ALL_ROLES } from "@/lib/utils/roles";
+import { createClient } from "@/lib/supabase/client";
+import { KanbanView } from "@/components/admin/KanbanView";
+import { GridView, type GridShooter, type GridWeddingDate, type GridBlockedDate, type GridAssignment } from "@/components/admin/GridView";
+import { AssignSlideOut } from "@/components/admin/AssignSlideOut";
+import { type WeddingCardData, type WeddingCardAssignment } from "@/components/admin/WeddingCard";
 
-interface Shooter {
+type View = "kanban" | "grid";
+
+interface AssignTarget {
+  weddingId: string;
+  role: string;
+  wedding: WeddingCardData;
+}
+
+// ─── Supabase raw types ────────────────────────────────────────────────────────
+
+interface RawKanbanAssignment {
   id: string;
-  name: string;
-  headshot_url: string | null;
-  roles: string[];
-}
-
-interface WeddingDate {
-  date: string;
-  couple_names: string;
-  wedding_id: string;
-}
-
-interface BlockedDate {
   shooter_id: string;
-  date: string;
+  role: string;
+  status: string;
+  brief_read: boolean;
+  quiz_passed: boolean;
+  shooter_profiles: {
+    id: string;
+    name: string;
+    headshot_url: string | null;
+  } | null;
 }
 
-interface AssignmentInfo {
+interface RawKanbanWedding {
+  id: string;
+  date: string;
+  venue_name: string | null;
+  services: string | null;
+  num_photographers: number;
+  num_videographers: number;
+  num_assistants: number;
+  assistant_roles: string[] | null;
+  add_ons: string[] | null;
+  couples: { names: string } | null;
+  assignments: RawKanbanAssignment[];
+}
+
+interface RawGridAssignment {
   shooter_id: string;
   wedding_id: string;
-  date: string;
-  couple_initials: string;
+  weddings: { date: string; couples: { names: string } | null } | null;
 }
 
-function formatDateHeader(dateStr: string): { day: string; dow: string; monthDay: string } {
-  const d = new Date(dateStr + "T12:00:00");
-  const dow = d.toLocaleDateString("en-US", { weekday: "short" });
-  const day = String(d.getDate());
-  const monthDay = d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-  return { day, dow, monthDay };
-}
+// ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function AdminCalendarPage() {
+  const [view, setView] = useState<View>("kanban");
+
+  // ── Kanban state ────────────────────────────────────────────────────────────
+  const [kanbanWeddings, setKanbanWeddings] = useState<WeddingCardData[]>([]);
+  const [kanbanLoading, setKanbanLoading] = useState(true);
+
+  // ── Grid state ──────────────────────────────────────────────────────────────
   const [currentMonth, setCurrentMonth] = useState(() => {
     const now = new Date();
     return new Date(now.getFullYear(), now.getMonth(), 1);
   });
-  const [shooters, setShooters] = useState<Shooter[]>([]);
-  const [weddingDates, setWeddingDates] = useState<WeddingDate[]>([]);
-  const [blocked, setBlocked] = useState<BlockedDate[]>([]);
-  const [assignments, setAssignments] = useState<AssignmentInfo[]>([]);
-  const [roleFilter, setRoleFilter] = useState("");
-  const [loading, setLoading] = useState(true);
+  const [gridShooters, setGridShooters] = useState<GridShooter[]>([]);
+  const [gridWeddingDates, setGridWeddingDates] = useState<GridWeddingDate[]>([]);
+  const [gridBlocked, setGridBlocked] = useState<GridBlockedDate[]>([]);
+  const [gridAssignments, setGridAssignments] = useState<GridAssignment[]>([]);
+  const [gridRoleFilter, setGridRoleFilter] = useState("");
+  const [gridLoading, setGridLoading] = useState(false);
 
+  // ── Assign slide-out state ──────────────────────────────────────────────────
+  const [assignTarget, setAssignTarget] = useState<AssignTarget | null>(null);
+
+  // ── Month helpers ──────────────────────────────────────────────────────────
   const year = currentMonth.getFullYear();
   const month = currentMonth.getMonth();
   const firstDay = `${year}-${String(month + 1).padStart(2, "0")}-01`;
   const lastDayDate = new Date(year, month + 1, 0);
   const lastDay = `${year}-${String(month + 1).padStart(2, "0")}-${String(lastDayDate.getDate()).padStart(2, "0")}`;
+  const monthLabel = currentMonth.toLocaleDateString("en-US", { month: "long", year: "numeric" });
 
-  const monthLabel = currentMonth.toLocaleDateString("en-US", {
-    month: "long",
-    year: "numeric",
-  });
+  // ── Load kanban data (all future weddings) ─────────────────────────────────
 
-  const loadData = useCallback(async () => {
-    setLoading(true);
+  const loadKanbanData = useCallback(async () => {
+    setKanbanLoading(true);
+    const supabase = createClient();
+
+    const today = new Date();
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+
+    const { data } = await supabase
+      .from("weddings")
+      .select(`
+        id,
+        date,
+        venue_name,
+        services,
+        num_photographers,
+        num_videographers,
+        num_assistants,
+        assistant_roles,
+        add_ons,
+        couples(names),
+        assignments(id, shooter_id, role, status, brief_read, quiz_passed, shooter_profiles(id, name, headshot_url))
+      `)
+      .gte("date", todayStr)
+      .order("date");
+
+    if (data) {
+      const mapped: WeddingCardData[] = (data as unknown as RawKanbanWedding[]).map((w) => {
+        const mappedAssignments: WeddingCardAssignment[] = (w.assignments ?? []).map((a) => ({
+          id: a.id,
+          shooter_id: a.shooter_id,
+          shooter_name: a.shooter_profiles?.name ?? "Unknown",
+          role: a.role,
+          status: a.status,
+          brief_read: a.brief_read ?? false,
+          quiz_passed: a.quiz_passed ?? false,
+        }));
+
+        return {
+          id: w.id,
+          date: w.date,
+          venue_name: w.venue_name,
+          couple_names: w.couples?.names ?? "TBD",
+          services: w.services,
+          num_photographers: w.num_photographers ?? 0,
+          num_videographers: w.num_videographers ?? 0,
+          num_assistants: w.num_assistants ?? 0,
+          assistant_roles: w.assistant_roles,
+          add_ons: w.add_ons,
+          assignments: mappedAssignments,
+        };
+      });
+      setKanbanWeddings(mapped);
+    }
+
+    setKanbanLoading(false);
+  }, []);
+
+  useEffect(() => {
+    loadKanbanData();
+  }, [loadKanbanData]);
+
+  // ── Load grid data (current month) ────────────────────────────────────────
+
+  const loadGridData = useCallback(async () => {
+    setGridLoading(true);
     const supabase = createClient();
 
     const [shootersRes, weddingsRes, blockedRes, assignmentsRes] = await Promise.all([
@@ -85,32 +171,32 @@ export default function AdminCalendarPage() {
         .lte("date", lastDay),
       supabase
         .from("assignments")
-        .select("shooter_id, wedding_id, weddings(date, couples(names))")
+        .select("shooter_id, wedding_id, weddings(date, couples(names))"),
     ]);
 
-    if (shootersRes.data) setShooters(shootersRes.data as Shooter[]);
+    if (shootersRes.data) setGridShooters(shootersRes.data as GridShooter[]);
 
     if (weddingsRes.data) {
-      const mapped: WeddingDate[] = [];
+      const mapped: GridWeddingDate[] = [];
       for (const w of weddingsRes.data) {
         const couples = w.couples as unknown as { names: string } | null;
         mapped.push({
           date: w.date,
-          couple_names: couples?.names || "TBD",
+          couple_names: couples?.names ?? "TBD",
           wedding_id: w.id,
         });
       }
-      setWeddingDates(mapped);
+      setGridWeddingDates(mapped);
     }
 
-    if (blockedRes.data) setBlocked(blockedRes.data);
+    if (blockedRes.data) setGridBlocked(blockedRes.data);
 
     if (assignmentsRes.data) {
-      const mapped: AssignmentInfo[] = [];
-      for (const a of assignmentsRes.data) {
-        const wedding = a.weddings as unknown as { date: string; couples: { names: string } | null };
+      const mapped: GridAssignment[] = [];
+      for (const a of (assignmentsRes.data as unknown as RawGridAssignment[])) {
+        const wedding = a.weddings;
         if (!wedding || wedding.date < firstDay || wedding.date > lastDay) continue;
-        const names = wedding.couples?.names || "??";
+        const names = wedding.couples?.names ?? "??";
         const initials = names
           .split(/\s*[&+]\s*/)
           .map((n: string) => n.trim().charAt(0).toUpperCase())
@@ -122,205 +208,127 @@ export default function AdminCalendarPage() {
           couple_initials: initials,
         });
       }
-      setAssignments(mapped);
+      setGridAssignments(mapped);
     }
 
-    setLoading(false);
+    setGridLoading(false);
   }, [firstDay, lastDay]);
 
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    if (view === "grid") {
+      loadGridData();
+    }
+  }, [view, loadGridData]);
 
-  const filteredShooters = shooters.filter((s) => {
-    if (roleFilter && !s.roles.includes(roleFilter)) return false;
-    return true;
-  });
+  // ── Assign click handler ───────────────────────────────────────────────────
 
-  // Only show columns for dates that have weddings
-  const uniqueWeddingDates = [...new Set(weddingDates.map((w) => w.date))].sort();
-
-  const today = new Date();
-  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
-
-  function getCellState(shooterId: string, dateStr: string) {
-    const isPast = dateStr < todayStr;
-    const assignment = assignments.find((a) => a.shooter_id === shooterId && a.date === dateStr);
-    const isBlocked = blocked.some((b) => b.shooter_id === shooterId && b.date === dateStr);
-
-    if (assignment) return { type: "assigned" as const, assignment };
-    if (isBlocked) return { type: "blocked" as const };
-    if (isPast) return { type: "past" as const };
-    return { type: "available" as const };
+  function handleAssignClick(weddingId: string, role: string) {
+    const wedding = kanbanWeddings.find((w) => w.id === weddingId);
+    if (!wedding) return;
+    setAssignTarget({ weddingId, role, wedding });
   }
 
-  // Get couple names for a wedding date column header
-  function getWeddingsForDate(dateStr: string) {
-    return weddingDates.filter((w) => w.date === dateStr);
+  function handleAssigned() {
+    // Refresh kanban data after a successful assignment
+    loadKanbanData();
+    if (view === "grid") loadGridData();
   }
+
+  // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
     <div className="flex flex-col p-4">
-      {/* Header with month navigation */}
+      {/* Header */}
       <div className="mb-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={() => setCurrentMonth((m) => new Date(m.getFullYear(), m.getMonth() - 1, 1))}
-            className="flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground"
-          >
-            <ChevronLeft className="size-4" />
-          </button>
-          <h1 className="text-base font-semibold text-foreground">{monthLabel}</h1>
-          <button
-            type="button"
-            onClick={() => setCurrentMonth((m) => new Date(m.getFullYear(), m.getMonth() + 1, 1))}
-            className="flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground"
-          >
-            <ChevronRight className="size-4" />
-          </button>
+          {/* View toggle pill */}
+          <div className="flex items-center rounded-lg border border-border bg-muted p-0.5">
+            <button
+              type="button"
+              onClick={() => setView("kanban")}
+              className={
+                view === "kanban"
+                  ? "rounded-md bg-background px-3 py-1 text-xs font-semibold text-foreground shadow-sm"
+                  : "rounded-md px-3 py-1 text-xs font-medium text-muted-foreground hover:text-foreground"
+              }
+            >
+              Kanban
+            </button>
+            <button
+              type="button"
+              onClick={() => setView("grid")}
+              className={
+                view === "grid"
+                  ? "rounded-md bg-background px-3 py-1 text-xs font-semibold text-foreground shadow-sm"
+                  : "rounded-md px-3 py-1 text-xs font-medium text-muted-foreground hover:text-foreground"
+              }
+            >
+              Grid
+            </button>
+          </div>
+
+          {/* Month nav (grid only) */}
+          {view === "grid" && (
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setCurrentMonth((m) => new Date(m.getFullYear(), m.getMonth() - 1, 1))}
+                className="flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground"
+              >
+                <ChevronLeft className="size-4" />
+              </button>
+              <span className="text-sm font-semibold text-foreground">{monthLabel}</span>
+              <button
+                type="button"
+                onClick={() => setCurrentMonth((m) => new Date(m.getFullYear(), m.getMonth() + 1, 1))}
+                className="flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground"
+              >
+                <ChevronRight className="size-4" />
+              </button>
+            </div>
+          )}
+
+          {/* Kanban title */}
+          {view === "kanban" && (
+            <h1 className="text-sm font-semibold text-foreground">Upcoming Weddings</h1>
+          )}
         </div>
-        <select
-          value={roleFilter}
-          onChange={(e) => setRoleFilter(e.target.value)}
-          className="h-8 rounded-lg border border-border bg-background px-3 text-xs text-foreground focus:border-primary focus:outline-none"
-        >
-          {ALL_ROLES.map((r) => (
-            <option key={r.value} value={r.value}>{r.label}</option>
-          ))}
-        </select>
       </div>
 
-      {/* Legend */}
-      <div className="mb-3 flex items-center gap-4">
-        <div className="flex items-center gap-1.5">
-          <span className="size-3 rounded-sm bg-success/20 border border-success/30" />
-          <span className="text-[10px] text-muted-foreground">Available</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className="size-3 rounded-sm bg-error/20 border border-error/30" />
-          <span className="text-[10px] text-muted-foreground">Blocked</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className="size-3 rounded-sm bg-warning/20 border border-warning/30" />
-          <span className="text-[10px] text-muted-foreground">Assigned</span>
-        </div>
-      </div>
-
-      {loading ? (
-        <p className="py-8 text-center text-sm text-muted-foreground">Loading...</p>
-      ) : uniqueWeddingDates.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-lg border border-border py-16">
-          <p className="text-sm font-medium text-foreground">No weddings this month</p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Navigate to a month with weddings, or create one in Weddings.
-          </p>
-        </div>
+      {/* Content */}
+      {view === "kanban" ? (
+        kanbanLoading ? (
+          <p className="py-8 text-center text-sm text-muted-foreground">Loading…</p>
+        ) : (
+          <KanbanView weddings={kanbanWeddings} onAssignClick={handleAssignClick} />
+        )
+      ) : gridLoading ? (
+        <p className="py-8 text-center text-sm text-muted-foreground">Loading…</p>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-border">
-          <table className="w-max border-collapse">
-            <thead>
-              <tr>
-                <th className="sticky left-0 z-10 min-w-[160px] border-b border-r border-border bg-card px-3 py-2 text-left text-xs font-medium text-muted-foreground">
-                  Shooter
-                </th>
-                {uniqueWeddingDates.map((dateStr) => {
-                  const { dow, monthDay } = formatDateHeader(dateStr);
-                  const weddings = getWeddingsForDate(dateStr);
-                  return (
-                    <th
-                      key={dateStr}
-                      className="min-w-[80px] border-b border-border px-1 py-1.5 text-center"
-                    >
-                      <div className="text-[9px] text-muted-foreground">{dow}</div>
-                      <div className="text-[11px] font-medium text-foreground">{monthDay}</div>
-                      {weddings.map((w) => (
-                        <div key={w.wedding_id} className="mt-0.5 truncate text-[8px] font-medium text-warning-text">
-                          {w.couple_names}
-                        </div>
-                      ))}
-                    </th>
-                  );
-                })}
-              </tr>
-            </thead>
-            <tbody>
-              {filteredShooters.map((shooter) => (
-                <tr key={shooter.id} className="border-b border-border last:border-b-0">
-                  <td className="sticky left-0 z-10 border-r border-border bg-card px-3 py-2">
-                    <div className="flex items-center gap-2">
-                      <div className="relative size-6 shrink-0 overflow-hidden rounded-full bg-muted">
-                        {shooter.headshot_url ? (
-                          <Image
-                            src={shooter.headshot_url}
-                            alt={shooter.name}
-                            fill
-                            className="object-cover"
-                          />
-                        ) : (
-                          <div className="flex size-full items-center justify-center text-[8px] font-bold text-muted-foreground">
-                            {shooter.name.charAt(0)}
-                          </div>
-                        )}
-                      </div>
-                      <span className="truncate text-xs font-medium text-foreground">
-                        {shooter.name}
-                      </span>
-                    </div>
-                  </td>
-                  {uniqueWeddingDates.map((dateStr) => {
-                    const state = getCellState(shooter.id, dateStr);
-                    return (
-                      <td key={dateStr} className="px-1 py-1.5 text-center">
-                        <div
-                          className={cn(
-                            "mx-auto flex size-8 items-center justify-center rounded-md text-[9px] font-bold",
-                            state.type === "available" && "bg-success/15 text-success",
-                            state.type === "blocked" && "bg-error/15 text-error",
-                            state.type === "assigned" && "bg-warning/20 text-warning-text",
-                            state.type === "past" && "bg-muted/50 text-muted-foreground/30"
-                          )}
-                          title={
-                            state.type === "assigned" && "assignment" in state
-                              ? `Assigned: ${state.assignment.couple_initials}`
-                              : state.type === "blocked"
-                                ? "Blocked"
-                                : state.type === "available"
-                                  ? "Available"
-                                  : "Past"
-                          }
-                        >
-                          {state.type === "assigned" && "assignment" in state
-                            ? state.assignment.couple_initials
-                            : state.type === "blocked"
-                              ? "×"
-                              : state.type === "available"
-                                ? "✓"
-                                : "—"}
-                        </div>
-                      </td>
-                    );
-                  })}
-                </tr>
-              ))}
-              {filteredShooters.length === 0 && (
-                <tr>
-                  <td
-                    colSpan={uniqueWeddingDates.length + 1}
-                    className="px-4 py-8 text-center text-sm text-muted-foreground"
-                  >
-                    No shooters match the filter
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+        <GridView
+          shooters={gridShooters}
+          weddingDates={gridWeddingDates}
+          blocked={gridBlocked}
+          assignments={gridAssignments}
+          roleFilter={gridRoleFilter}
+          onRoleFilterChange={setGridRoleFilter}
+        />
       )}
 
-      <p className="mt-3 text-[10px] text-muted-foreground">
-        Showing {uniqueWeddingDates.length} wedding date{uniqueWeddingDates.length !== 1 ? "s" : ""} · {filteredShooters.length} shooter{filteredShooters.length !== 1 ? "s" : ""}
-      </p>
+      {/* Assign slide-out */}
+      {assignTarget && (
+        <AssignSlideOut
+          open={assignTarget !== null}
+          onOpenChange={(open) => {
+            if (!open) setAssignTarget(null);
+          }}
+          weddingId={assignTarget.weddingId}
+          weddingDate={assignTarget.wedding.date}
+          coupleNames={assignTarget.wedding.couple_names}
+          role={assignTarget.role}
+          onAssigned={handleAssigned}
+        />
+      )}
     </div>
   );
 }
