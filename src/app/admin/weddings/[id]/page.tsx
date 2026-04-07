@@ -40,7 +40,7 @@ interface WeddingDetail {
   num_photographers: number;
   num_videographers: number;
   num_assistants: number;
-  assistant_roles: string | null;
+  assistant_roles: string[] | null;
   add_ons: string[] | null;
   dress_code: string | null;
   hours_of_coverage: string | null;
