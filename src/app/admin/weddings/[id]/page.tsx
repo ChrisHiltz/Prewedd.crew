@@ -26,6 +26,7 @@ import { CollapsibleSection } from "@/components/ui/collapsible-section";
 import { AutosaveIndicator, type SaveStatus } from "@/components/ui/autosave-indicator";
 import { cn } from "@/lib/utils";
 import { ROLE_LABELS } from "@/lib/utils/roles";
+import { getNeededRoles, getUnfilledRoles } from "@/lib/utils/scheduling";
 
 interface WeddingDetail {
   id: string;
@@ -572,22 +573,13 @@ function DocLink({ label, url }: { label: string; url: string }) {
   );
 }
 
-// --- Add Shooter Panel (unchanged logic, included here) ---
+// --- Add Shooter Panel ---
 
-function getNeededRoles(wedding: WeddingDetail): string[] {
-  const roles: string[] = [];
-  const svc = wedding.services?.toLowerCase() || "";
-  if (svc.includes("photo")) {
-    if (wedding.num_photographers >= 1) roles.push("lead_photo");
-    if (wedding.num_photographers >= 2) roles.push("second_photo");
-  }
-  if (svc.includes("video")) {
-    if (wedding.num_videographers >= 1) roles.push("lead_video");
-    if (wedding.num_videographers >= 2) roles.push("second_video");
-  }
-  if (wedding.num_assistants > 0) roles.push("photobooth");
-  if (wedding.add_ons?.some((a) => a.toLowerCase().includes("drone"))) roles.push("drone");
-  return roles;
+interface ConflictInfo {
+  id: string;
+  couple_name: string;
+  date: string;
+  role: string;
 }
 
 function AddShooterPanel({
@@ -598,47 +590,74 @@ function AddShooterPanel({
   coupleName: string; venueName: string; assignedShooterIds: string[];
   assignedRoles: string[]; onClose: () => void; onAssigned: () => void;
 }) {
-  const [shooters, setShooters] = useState<{ id: string; name: string; headshot_url: string | null; roles: string[] }[]>([]);
+  const [shooters, setShooters] = useState<{
+    id: string; name: string; headshot_url: string | null; roles: string[];
+  }[]>([]);
   const [loadingShooters, setLoadingShooters] = useState(true);
   const [assigningId, setAssigningId] = useState<string | null>(null);
   const [error, setError] = useState("");
+  const [pendingSwap, setPendingSwap] = useState<{
+    shooterId: string; role: string; conflict: ConflictInfo;
+  } | null>(null);
+
+  // Suppress unused var warnings — venueName is kept for future use via the API
+  void coupleName; void venueName;
 
   const neededRoles = getNeededRoles(weddingDetail);
-  const unfilledRoles = neededRoles.filter((r) => !assignedRoles.includes(r));
+  const unfilledRoles = getUnfilledRoles(neededRoles, assignedRoles);
 
   useEffect(() => {
     async function loadAvailable() {
       const supabase = createClient();
-      const { data: allShooters } = await supabase.from("shooter_profiles").select("id, name, headshot_url, roles").order("name");
-      const { data: blockedData } = await supabase.from("blocked_dates").select("shooter_id").eq("date", weddingDate);
-      const blockedIds = new Set(blockedData?.map((b) => b.shooter_id) || []);
-      const assignedIds = new Set(assignedShooterIds);
-      const available = (allShooters || []).filter((s) => !blockedIds.has(s.id) && !assignedIds.has(s.id) && s.roles.some((r: string) => unfilledRoles.includes(r)));
-      setShooters(available);
+      const { data: allShooters } = await supabase
+        .from("shooter_profiles")
+        .select("id, name, headshot_url, roles")
+        .order("name");
+      setShooters(allShooters ?? []);
       setLoadingShooters(false);
     }
     loadAvailable();
-  }, [weddingDate, assignedShooterIds, unfilledRoles.join(",")]);
+  }, [weddingDate]);
 
-  async function handleQuickAssign(shooterId: string, role: string) {
-    setError(""); setAssigningId(shooterId);
-    const supabase = createClient();
-    const { error: insertError } = await supabase.from("assignments").insert({ wedding_id: weddingId, shooter_id: shooterId, role });
-    if (insertError) { setError(insertError.message); setAssigningId(null); return; }
+  async function handleAssign(shooterId: string, role: string, swapFromWeddingId?: string) {
+    setError("");
+    setAssigningId(shooterId);
 
-    const shooter = shooters.find((s) => s.id === shooterId);
-    if (shooter) {
-      const { data: profileData } = await supabase.from("shooter_profiles").select("user_id").eq("id", shooterId).single();
-      if (profileData) {
-        const { data: userData } = await supabase.from("users").select("email").eq("id", profileData.user_id).single();
-        if (userData?.email) {
-          const fDate = new Date(weddingDate + "T12:00:00").toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" });
-          fetch("/api/notify", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ to: userData.email, subject: `You've been assigned to ${coupleName}'s wedding`, html: `<h2>New Wedding Assignment</h2><p>You've been assigned as <strong>${ROLE_LABELS[role] || role}</strong> for <strong>${coupleName}</strong>'s wedding.</p><ul><li><strong>Date:</strong> ${fDate}</li><li><strong>Venue:</strong> ${venueName || "TBD"}</li></ul><p><a href="${typeof window !== "undefined" ? window.location.origin : ""}/dashboard">View in PreWedd Crew</a></p>` }) });
+    const body: Record<string, string> = { wedding_id: weddingId, shooter_id: shooterId, role };
+    if (swapFromWeddingId) body.swap_from_wedding_id = swapFromWeddingId;
+
+    try {
+      const res = await fetch("/api/assign", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+
+      const data = await res.json() as { error?: string; message?: string; conflicting_wedding?: ConflictInfo };
+
+      if (!res.ok) {
+        if (data.error === "conflict" && data.conflicting_wedding) {
+          setPendingSwap({ shooterId, role, conflict: data.conflicting_wedding });
+          setAssigningId(null);
+          return;
         }
+        setError(data.message ?? data.error ?? "Assignment failed");
+        setAssigningId(null);
+        return;
       }
+
+      setPendingSwap(null);
+      setAssigningId(null);
+      onAssigned();
+    } catch {
+      setError("Network error — please try again.");
+      setAssigningId(null);
     }
-    setAssigningId(null); onAssigned();
   }
+
+  const visibleShooters = shooters.filter(
+    (s) => !assignedShooterIds.includes(s.id) && s.roles.some((r: string) => unfilledRoles.includes(r))
+  );
 
   return (
     <div className="mb-4 rounded-lg border border-border bg-card p-4">
@@ -647,8 +666,40 @@ function AddShooterPanel({
           <h2 className="text-sm font-semibold text-foreground">Add Shooter</h2>
           <p className="mt-0.5 text-[10px] text-muted-foreground">Available shooters with matching roles</p>
         </div>
-        <button type="button" onClick={onClose} className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"><X className="size-4" /></button>
+        <button type="button" onClick={onClose} className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground">
+          <X className="size-4" />
+        </button>
       </div>
+
+      {pendingSwap && (
+        <div className="mb-3 rounded-lg border border-warning/50 bg-warning/10 p-3">
+          <p className="text-xs font-medium text-foreground">
+            Scheduling conflict — this shooter is already assigned to{" "}
+            <strong>{pendingSwap.conflict.couple_name}</strong> on this date.
+          </p>
+          <p className="mt-1 text-[11px] text-muted-foreground">
+            Swap them to this wedding instead? They will be removed from{" "}
+            {pendingSwap.conflict.couple_name}.
+          </p>
+          <div className="mt-2 flex gap-2">
+            <button
+              type="button"
+              onClick={() => handleAssign(pendingSwap.shooterId, pendingSwap.role, pendingSwap.conflict.id)}
+              className="rounded-md bg-warning px-3 py-1.5 text-[11px] font-medium text-warning-foreground hover:bg-warning/90"
+            >
+              Swap
+            </button>
+            <button
+              type="button"
+              onClick={() => setPendingSwap(null)}
+              className="rounded-md border border-border px-3 py-1.5 text-[11px] font-medium text-muted-foreground hover:bg-muted"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
       {unfilledRoles.length > 0 && (
         <div className="mb-3 flex items-center gap-2">
           <span className="text-[10px] text-muted-foreground">Needed:</span>
@@ -656,35 +707,54 @@ function AddShooterPanel({
         </div>
       )}
       {error && <p className="mb-2 text-xs text-error">{error}</p>}
-      {loadingShooters ? <p className="py-4 text-center text-xs text-muted-foreground">Loading...</p>
-        : shooters.length === 0 ? <p className="py-4 text-center text-xs text-muted-foreground">{unfilledRoles.length === 0 ? "All roles filled." : "No available shooters."}</p>
-        : (
-          <div className="max-h-64 space-y-1.5 overflow-y-auto">
-            {shooters.map((s) => {
-              const matchingRoles = s.roles.filter((r: string) => unfilledRoles.includes(r));
-              return (
-                <div key={s.id} className="flex items-center gap-2.5 rounded-lg border border-border px-3 py-2">
-                  <div className="relative size-7 shrink-0 overflow-hidden rounded-full bg-muted">
-                    {s.headshot_url ? <Image src={s.headshot_url} alt={s.name} fill className="object-cover" /> : <div className="flex size-full items-center justify-center text-[9px] font-bold text-muted-foreground">{s.name.charAt(0)}</div>}
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-xs font-medium text-foreground">{s.name}</p>
-                    <RoleIcons roles={s.roles} size="xs" />
-                  </div>
-                  <div className="flex items-center gap-1">
-                    {matchingRoles.map((role: string) => (
-                      <button key={role} type="button" disabled={assigningId === s.id} onClick={() => handleQuickAssign(s.id, role)} className="flex items-center gap-1 rounded-md border border-border px-2 py-1 text-[10px] font-medium transition-colors hover:border-primary hover:bg-primary/5 disabled:opacity-50" title={`Assign as ${ROLE_LABELS[role]}`}>
-                        <RoleIcon role={role} size="xs" />
-                        <span className="hidden sm:inline">{assigningId === s.id ? "..." : "Assign"}</span>
-                      </button>
-                    ))}
-                  </div>
+      {loadingShooters ? (
+        <p className="py-4 text-center text-xs text-muted-foreground">Loading...</p>
+      ) : visibleShooters.length === 0 ? (
+        <p className="py-4 text-center text-xs text-muted-foreground">
+          {unfilledRoles.length === 0 ? "All roles filled." : "No available shooters."}
+        </p>
+      ) : (
+        <div className="max-h-64 space-y-1.5 overflow-y-auto">
+          {visibleShooters.map((s) => {
+            const matchingRoles = s.roles.filter((r: string) => unfilledRoles.includes(r));
+            return (
+              <div key={s.id} className="flex items-center gap-2.5 rounded-lg border border-border px-3 py-2">
+                <div className="relative size-7 shrink-0 overflow-hidden rounded-full bg-muted">
+                  {s.headshot_url ? (
+                    <Image src={s.headshot_url} alt={s.name} fill className="object-cover" />
+                  ) : (
+                    <div className="flex size-full items-center justify-center text-[9px] font-bold text-muted-foreground">
+                      {s.name.charAt(0)}
+                    </div>
+                  )}
                 </div>
-              );
-            })}
-          </div>
-        )}
-      <div className="mt-3 flex justify-end"><Button type="button" variant="outline" size="sm" onClick={onClose}>Done</Button></div>
+                <div className="flex-1">
+                  <p className="text-xs font-medium text-foreground">{s.name}</p>
+                  <RoleIcons roles={s.roles} size="xs" />
+                </div>
+                <div className="flex items-center gap-1">
+                  {matchingRoles.map((role: string) => (
+                    <button
+                      key={role}
+                      type="button"
+                      disabled={assigningId === s.id}
+                      onClick={() => handleAssign(s.id, role)}
+                      className="flex items-center gap-1 rounded-md border border-border px-2 py-1 text-[10px] font-medium transition-colors hover:border-primary hover:bg-primary/5 disabled:opacity-50"
+                      title={`Assign as ${ROLE_LABELS[role] ?? role}`}
+                    >
+                      <RoleIcon role={role} size="xs" />
+                      <span className="hidden sm:inline">{assigningId === s.id ? "..." : "Assign"}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+      <div className="mt-3 flex justify-end">
+        <Button type="button" variant="outline" size="sm" onClick={onClose}>Done</Button>
+      </div>
     </div>
   );
 }

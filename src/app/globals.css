@@ -31,8 +31,8 @@
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
-  --font-sans: var(--font-sans);
-  --font-mono: var(--font-mono);
+  --font-sans: "Geist", "Geist Fallback", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Geist Mono", "Geist Mono Fallback", ui-monospace, monospace;
   --font-heading: var(--font-heading);
   --radius-sm: var(--radius-sm);
   --radius-md: var(--radius-md);
