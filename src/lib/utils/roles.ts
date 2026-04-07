@@ -19,7 +19,7 @@ export const ALL_CREW_ROLES: CrewRole[] = [
   "assistant",
 ];
 
-export const ROLE_LABELS: Record<CrewRole, string> = {
+export const ROLE_LABELS: Record<string, string> = {
   lead_photo: "Lead Photographer",
   second_photo: "Second Photographer",
   lead_video: "Lead Videographer",
@@ -29,7 +29,7 @@ export const ROLE_LABELS: Record<CrewRole, string> = {
   assistant: "Assistant",
 };
 
-export const ROLE_SHORT_LABELS: Record<CrewRole, string> = {
+export const ROLE_SHORT_LABELS: Record<string, string> = {
   lead_photo: "Lead Photo",
   second_photo: "2nd Photo",
   lead_video: "Lead Video",

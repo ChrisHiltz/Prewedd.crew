@@ -1,17 +1,19 @@
-import { Camera, Video, User, Plane } from "lucide-react";
+// src/components/ui/role-icon.tsx
+import { Camera, Video, User, Plane, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const ROLE_CONFIG: Record<string, {
+export const ROLE_CONFIG: Record<string, {
   icon: typeof Camera;
   color: string;
   label: string;
 }> = {
-  lead_photo: { icon: Camera, color: "text-error", label: "Lead Photo" },
-  second_photo: { icon: Camera, color: "text-info", label: "2nd Photo" },
-  lead_video: { icon: Video, color: "text-error", label: "Lead Video" },
-  second_video: { icon: Video, color: "text-info", label: "2nd Video" },
-  photobooth: { icon: User, color: "text-warning", label: "Photobooth" },
-  drone: { icon: Plane, color: "text-success", label: "Drone" },
+  lead_photo:   { icon: Camera, color: "text-error",   label: "Lead Photo" },
+  second_photo: { icon: Camera, color: "text-info",    label: "2nd Photo" },
+  lead_video:   { icon: Video,  color: "text-error",   label: "Lead Video" },
+  second_video: { icon: Video,  color: "text-info",    label: "2nd Video" },
+  photobooth:   { icon: User,   color: "text-warning", label: "Photobooth" },
+  drone:        { icon: Plane,  color: "text-success", label: "Drone" },
+  assistant:    { icon: Users,  color: "text-muted-foreground", label: "Assistant" },
 };
 
 export function RoleIcon({
@@ -35,7 +37,9 @@ export function RoleIcon({
       title={config.label}
     >
       <Icon className={sizeClass} />
-      {showLabel && <span className="text-[10px] font-medium">{config.label}</span>}
+      {showLabel && (
+        <span className="text-[10px] font-medium">{config.label}</span>
+      )}
     </span>
   );
 }
@@ -56,4 +60,3 @@ export function RoleIcons({
   );
 }
 
-export { ROLE_CONFIG };

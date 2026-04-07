@@ -5,15 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-const ROLES = [
-  { value: "lead_photo", label: "Lead Photographer" },
-  { value: "second_photo", label: "Second Photographer" },
-  { value: "lead_video", label: "Lead Videographer" },
-  { value: "second_video", label: "Second Videographer" },
-  { value: "photobooth", label: "Photobooth Operator" },
-  { value: "drone", label: "Drone Operator" },
-];
+import { SELECTABLE_ROLES as ROLES } from "@/lib/utils/roles";
 
 interface StepRolesRatesProps {
   profileId: string;

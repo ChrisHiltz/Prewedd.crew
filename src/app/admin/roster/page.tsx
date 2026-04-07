@@ -6,34 +6,11 @@ import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Search, X, ChevronRight, UserPlus, Send, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { SELECTABLE_ROLES, ROLE_SHORT_LABELS, ROLE_FILTER_OPTIONS } from "@/lib/utils/roles";
 
-const ROLES_LIST = [
-  { value: "lead_photo", label: "Lead Photographer" },
-  { value: "second_photo", label: "Second Photographer" },
-  { value: "lead_video", label: "Lead Videographer" },
-  { value: "second_video", label: "Second Videographer" },
-  { value: "photobooth", label: "Photobooth Operator" },
-  { value: "drone", label: "Drone Operator" },
-];
-
-const ROLE_LABELS: Record<string, string> = {
-  lead_photo: "Lead Photo",
-  second_photo: "2nd Photo",
-  lead_video: "Lead Video",
-  second_video: "2nd Video",
-  photobooth: "Photobooth",
-  drone: "Drone",
-};
-
-const ALL_ROLES = [
-  { value: "", label: "All Roles" },
-  { value: "lead_photo", label: "Lead Photographer" },
-  { value: "second_photo", label: "Second Photographer" },
-  { value: "lead_video", label: "Lead Videographer" },
-  { value: "second_video", label: "Second Videographer" },
-  { value: "photobooth", label: "Photobooth Operator" },
-  { value: "drone", label: "Drone Operator" },
-];
+const ROLES_LIST = SELECTABLE_ROLES;
+const ROLE_LABELS = ROLE_SHORT_LABELS;
+const ALL_ROLES = ROLE_FILTER_OPTIONS;
 
 const PERSONALITY_ITEMS = [
   { key: "energy", label: "Energy", low: "Calm", high: "Hype" },

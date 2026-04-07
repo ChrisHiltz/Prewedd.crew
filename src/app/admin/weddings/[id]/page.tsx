@@ -25,6 +25,7 @@ import { EditableCell } from "@/components/ui/editable-cell";
 import { CollapsibleSection } from "@/components/ui/collapsible-section";
 import { AutosaveIndicator, type SaveStatus } from "@/components/ui/autosave-indicator";
 import { cn } from "@/lib/utils";
+import { ROLE_LABELS } from "@/lib/utils/roles";
 
 interface WeddingDetail {
   id: string;
@@ -83,15 +84,6 @@ interface Assignment {
     roles: string[];
   } | null;
 }
-
-const ROLE_LABELS: Record<string, string> = {
-  lead_photo: "Lead Photographer",
-  second_photo: "Second Photographer",
-  lead_video: "Lead Videographer",
-  second_video: "Second Videographer",
-  photobooth: "Photobooth Operator",
-  drone: "Drone Operator",
-};
 
 const ENERGY_OPTIONS = [
   { value: "introverted", label: "Introverted" },

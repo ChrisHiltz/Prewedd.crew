@@ -5,16 +5,7 @@ import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-const ALL_ROLES = [
-  { value: "", label: "All Roles" },
-  { value: "lead_photo", label: "Lead Photographer" },
-  { value: "second_photo", label: "Second Photographer" },
-  { value: "lead_video", label: "Lead Videographer" },
-  { value: "second_video", label: "Second Videographer" },
-  { value: "photobooth", label: "Photobooth Operator" },
-  { value: "drone", label: "Drone Operator" },
-];
+import { ROLE_FILTER_OPTIONS as ALL_ROLES } from "@/lib/utils/roles";
 
 interface Shooter {
   id: string;

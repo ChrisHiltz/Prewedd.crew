@@ -21,6 +21,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ROLE_LABELS } from "@/lib/utils/roles";
 
 interface BriefData {
   names: string;
@@ -72,15 +73,6 @@ interface WeddingBrief {
   family_checklist_url: string | null;
   timeline_internal_url: string | null;
 }
-
-const ROLE_LABELS: Record<string, string> = {
-  lead_photo: "Lead Photographer",
-  second_photo: "Second Photographer",
-  lead_video: "Lead Videographer",
-  second_video: "Second Videographer",
-  photobooth: "Photobooth Operator",
-  drone: "Drone Operator",
-};
 
 export default function ShooterBriefPage({
   params,

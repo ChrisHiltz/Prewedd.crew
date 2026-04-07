@@ -6,19 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Pencil, Save, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-const ROLES_LIST = [
-  { value: "lead_photo", label: "Lead Photographer" },
-  { value: "second_photo", label: "Second Photographer" },
-  { value: "lead_video", label: "Lead Videographer" },
-  { value: "second_video", label: "Second Videographer" },
-  { value: "photobooth", label: "Photobooth Operator" },
-  { value: "drone", label: "Drone Operator" },
-];
-
-const ROLE_LABELS: Record<string, string> = Object.fromEntries(
-  ROLES_LIST.map((r) => [r.value, r.label])
-);
+import { SELECTABLE_ROLES as ROLES_LIST, ROLE_LABELS } from "@/lib/utils/roles";
 
 const PERSONALITY_ITEMS = [
   { key: "energy", label: "Energy", low: "Calm", high: "Hype" },
