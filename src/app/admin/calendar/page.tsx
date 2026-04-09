@@ -176,7 +176,7 @@ export default function AdminCalendarPage() {
     const [shootersRes, weddingsRes, blockedRes, assignmentsRes] = await Promise.all([
       supabase
         .from("shooter_profiles")
-        .select("id, name, headshot_url, roles")
+        .select("id, name, headshot_url, roles, skill_scores, rates, is_employee")
         .order("name"),
       supabase
         .from("weddings")
