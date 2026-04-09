@@ -71,7 +71,7 @@ export function KanbanView({ weddings, onAssignClick }: KanbanViewProps) {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 overflow-x-hidden">
       {months.map(({ monthKey, label, dates }) => (
         <div key={monthKey}>
           {/* Sticky month header */}
