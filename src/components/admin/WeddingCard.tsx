@@ -26,6 +26,7 @@ export interface WeddingCardData extends WeddingForScheduling {
   date: string;
   venue_name: string | null;
   couple_names: string;
+  couple_id: string | null;
   assignments: WeddingCardAssignment[];
   // Expandable detail fields
   package: string | null;
@@ -38,7 +39,8 @@ export interface WeddingCardData extends WeddingForScheduling {
 interface WeddingCardProps {
   wedding: WeddingCardData;
   onAssignClick: (weddingId: string, role: string) => void;
-  onCardClick?: (wedding: WeddingCardData) => void;
+  onShooterClick?: (shooterId: string) => void;
+  onCoupleClick?: (coupleId: string) => void;
 }
 
 const STATUS_STYLES: Record<StaffingStatus, { border: string; dot: string; label: string }> = {
@@ -48,7 +50,7 @@ const STATUS_STYLES: Record<StaffingStatus, { border: string; dot: string; label
   confirmed: { border: "border-success/60", dot: "bg-success", label: "Confirmed" },
 };
 
-export function WeddingCard({ wedding, onAssignClick, onCardClick }: WeddingCardProps) {
+export function WeddingCard({ wedding, onAssignClick, onShooterClick, onCoupleClick }: WeddingCardProps) {
   const [expanded, setExpanded] = useState(false);
   const status = getStaffingStatus(wedding, wedding.assignments);
   const styles = STATUS_STYLES[status];
@@ -74,17 +76,23 @@ export function WeddingCard({ wedding, onAssignClick, onCardClick }: WeddingCard
 
       {/* Header — couple name with link icon opens side panel */}
       <div className="pr-6">
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onCardClick?.(wedding);
-          }}
-          className="group inline-flex items-center gap-1 text-xs font-semibold text-foreground leading-tight hover:text-primary"
-        >
-          <LinkIcon className="size-3 text-muted-foreground group-hover:text-primary" />
-          {wedding.couple_names}
-        </button>
+        {wedding.couple_id ? (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onCoupleClick?.(wedding.couple_id!);
+            }}
+            className="group inline-flex items-center gap-1 text-xs font-semibold text-foreground leading-tight hover:text-primary"
+          >
+            <LinkIcon className="size-3 text-muted-foreground group-hover:text-primary" />
+            {wedding.couple_names}
+          </button>
+        ) : (
+          <span className="text-xs font-semibold text-foreground leading-tight">
+            {wedding.couple_names}
+          </span>
+        )}
         {wedding.venue_name && (
           <p className="mt-0.5 truncate text-[10px] text-muted-foreground">
             {wedding.venue_name}
@@ -96,15 +104,20 @@ export function WeddingCard({ wedding, onAssignClick, onCardClick }: WeddingCard
       {wedding.assignments.length > 0 && (
         <div className="mt-2 flex flex-wrap gap-1">
           {wedding.assignments.map((a) => (
-            <span
+            <button
               key={a.id}
-              className="inline-flex items-center gap-1 rounded-full border border-border bg-muted px-1.5 py-0.5"
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onShooterClick?.(a.shooter_id);
+              }}
+              className="inline-flex items-center gap-1 rounded-full border border-border bg-muted px-1.5 py-0.5 hover:border-primary hover:bg-primary/5 transition-colors"
             >
               <RoleIcon role={a.role} size="xs" />
               <span className="text-[9px] font-medium text-foreground">
                 {a.shooter_name.split(" ")[0]}
               </span>
-            </span>
+            </button>
           ))}
         </div>
       )}

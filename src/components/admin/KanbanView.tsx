@@ -8,7 +8,8 @@ import { getNeededRoles, getUnfilledRoles } from "@/lib/utils/scheduling";
 interface KanbanViewProps {
   weddings: WeddingCardData[];
   onAssignClick: (weddingId: string, role: string) => void;
-  onCardClick?: (wedding: WeddingCardData) => void;
+  onShooterClick?: (shooterId: string) => void;
+  onCoupleClick?: (coupleId: string) => void;
 }
 
 function formatMonthLabel(dateStr: string): string {
@@ -32,7 +33,7 @@ function getMonthKey(dateStr: string): string {
   return dateStr.slice(0, 7); // "YYYY-MM"
 }
 
-export function KanbanView({ weddings, onAssignClick, onCardClick }: KanbanViewProps) {
+export function KanbanView({ weddings, onAssignClick, onShooterClick, onCoupleClick }: KanbanViewProps) {
   // Group weddings by month, then by date within each month
   const months = useMemo(() => {
     const monthMap = new Map<string, Map<string, WeddingCardData[]>>();
@@ -128,7 +129,8 @@ export function KanbanView({ weddings, onAssignClick, onCardClick }: KanbanViewP
                           key={w.id}
                           wedding={w}
                           onAssignClick={onAssignClick}
-                          onCardClick={onCardClick}
+                          onShooterClick={onShooterClick}
+                          onCoupleClick={onCoupleClick}
                         />
                       ))}
                     </div>
