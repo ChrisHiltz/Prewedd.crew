@@ -102,7 +102,7 @@ export function GridView({
   }
 
   return (
-    <div>
+    <div className="flex flex-col">
       <div className="mb-3 flex items-center justify-between">
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-1.5">
@@ -129,8 +129,8 @@ export function GridView({
         </select>
       </div>
 
-      <div className="overflow-x-auto rounded-lg border border-border">
-        <table className="min-w-full border-collapse">
+      <div className="w-full overflow-x-auto rounded-lg border border-border">
+        <table className="w-max min-w-full border-collapse">
           <thead>
             <tr>
               <th className="sticky left-0 z-10 min-w-[160px] border-b border-r border-border bg-card px-3 py-2 text-left text-xs font-medium text-muted-foreground">
