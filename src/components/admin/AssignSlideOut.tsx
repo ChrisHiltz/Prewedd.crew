@@ -82,33 +82,17 @@ function rateForRole(
 // ─── Day cell ─────────────────────────────────────────────────────────────────
 
 function DayCell({ status }: { status: DayStatus }) {
+  const base = "inline-flex h-6 w-7 items-center justify-center rounded text-[10px] font-bold";
   if (status.type === "free") {
-    return (
-      <span className="inline-flex size-6 items-center justify-center rounded bg-success/15 text-[10px] font-bold text-success" title="Free">
-        ✓
-      </span>
-    );
+    return <span className={cn(base, "bg-success/15 text-success")} title="Free">✓</span>;
   }
   if (status.type === "blocked") {
-    return (
-      <span className="inline-flex size-6 items-center justify-center rounded bg-error/15 text-[10px] font-bold text-error" title="Blocked">
-        ×
-      </span>
-    );
+    return <span className={cn(base, "bg-error/15 text-error")} title="Blocked">×</span>;
   }
   if (status.type === "on_team") {
-    return (
-      <span className="inline-flex size-6 items-center justify-center rounded bg-info/15 text-[10px] font-bold text-info" title="On this team">
-        ★
-      </span>
-    );
+    return <span className={cn(base, "bg-info/15 text-info")} title="On this team">★</span>;
   }
-  // booked
-  return (
-    <span className="inline-flex size-6 items-center justify-center rounded bg-warning/20 text-[10px] font-bold text-warning-text" title={`Booked: ${status.couple_name}`}>
-      B
-    </span>
-  );
+  return <span className={cn(base, "bg-warning/20 text-warning-text")} title={`Booked: ${status.couple_name}`}>B</span>;
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
@@ -353,8 +337,10 @@ export function AssignSlideOut({
             value={sort}
             onValueChange={(v) => setSort(v as SortOption)}
           >
-            <SelectTrigger size="sm" className="w-40">
-              <SelectValue />
+            <SelectTrigger size="sm" className="w-40 text-xs">
+              <SelectValue placeholder="Sort by…">
+                {sort === "employees_first" ? "Employees first" : sort === "skill_rating" ? "Skill rating" : "Lowest rate"}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="employees_first">Employees first</SelectItem>
@@ -385,39 +371,23 @@ export function AssignSlideOut({
               </p>
             </div>
           ) : (
-            <div className="space-y-2 pt-2">
-              {/* Day column headers */}
-              <div className="mb-1 flex items-center">
-                {/* Name column spacer */}
-                <div className="flex-1" />
-                {/* Day headers */}
-                <div className="flex gap-1">
+            <div className="space-y-1.5 pt-2">
+              {/* Day column headers — aligned with data rows */}
+              <div className="flex items-end px-2 py-1">
+                <div className="flex flex-1 items-center gap-1.5">
+                  {/* Avatar + name spacer */}
+                  <div className="size-7 shrink-0" />
+                  <div className="flex-1" />
+                </div>
+                <div className="flex gap-0.5 shrink-0">
                   {[prevHeader, weddingHeader, nextHeader].map((h, i) => (
-                    <div
-                      key={i}
-                      className={cn(
-                        "w-12 text-center",
-                        i === 1 && "font-semibold text-foreground"
-                      )}
-                    >
-                      <div className="text-[8px] uppercase tracking-wide text-muted-foreground">
-                        {h.dow}
-                      </div>
-                      <div
-                        className={cn(
-                          "text-[9px]",
-                          i === 1
-                            ? "font-semibold text-foreground"
-                            : "text-muted-foreground"
-                        )}
-                      >
-                        {h.monthDay}
-                      </div>
+                    <div key={i} className="w-7 text-center">
+                      <div className="text-[7px] uppercase tracking-wide text-muted-foreground">{h.dow}</div>
+                      <div className={cn("text-[8px]", i === 1 ? "font-semibold text-foreground" : "text-muted-foreground")}>{h.monthDay}</div>
                     </div>
                   ))}
                 </div>
-                {/* Action column spacer */}
-                <div className="w-20" />
+                <div className="w-11 shrink-0" />
               </div>
 
               {sorted.map((shooter) => {
@@ -480,15 +450,15 @@ export function AssignSlideOut({
                       </div>
                     </div>
 
-                    {/* Day cells */}
+                    {/* Day cells — w-7 matches header columns */}
                     <div className="flex gap-0.5 shrink-0">
                       {shooter.dayStatuses.map((status, i) => (
                         <DayCell key={i} status={status} />
                       ))}
                     </div>
 
-                    {/* Action */}
-                    <div className="w-12 shrink-0 text-right">
+                    {/* Action — w-11 matches header spacer */}
+                    <div className="w-11 shrink-0 text-right">
                       {isOnTeam ? (
                         <span className="text-[8px] font-medium text-info">On team</span>
                       ) : isWeddingDayBooked ? (
