@@ -399,7 +399,7 @@ export default function AdminCalendarPage() {
       <ShooterPanel shooterId={activeShooterId} onClose={() => setActiveShooterId(null)} />
 
       {/* Couple info panel */}
-      <CouplePanel coupleId={activeCoupleId} onClose={() => setActiveCoupleId(null)} onShooterClick={openShooterPanel} />
+      <CouplePanel coupleId={activeCoupleId} onClose={() => setActiveCoupleId(null)} onShooterClick={openShooterPanel} onAssignClick={handleAssignClick} />
 
       {/* Wedding info side panel */}
       <Sheet open={infoWedding !== null} onOpenChange={(open) => { if (!open) setInfoWedding(null); }}>
