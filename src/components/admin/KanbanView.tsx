@@ -82,6 +82,9 @@ export function KanbanView({ weddings, onAssignClick, onCardClick }: KanbanViewP
               <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
                 {dates.length} date{dates.length !== 1 ? "s" : ""}
               </span>
+              <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                {dates.reduce((sum, d) => sum + d.weddings.length, 0)} wedding{dates.reduce((sum, d) => sum + d.weddings.length, 0) !== 1 ? "s" : ""}
+              </span>
             </div>
           </div>
 
