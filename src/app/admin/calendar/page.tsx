@@ -395,7 +395,7 @@ export default function AdminCalendarPage() {
           coupleNames={assignTarget.wedding.couple_names}
           role={assignTarget.role}
           onAssigned={handleAssigned}
-          onShooterClick={openShooterPanel}
+          onShooterClick={(id) => { setAssignTarget(null); openShooterPanel(id); }}
         />
       )}
 
