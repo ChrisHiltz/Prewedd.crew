@@ -2,7 +2,6 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { ROLE_FILTER_OPTIONS } from "@/lib/utils/roles";
 
@@ -20,6 +19,7 @@ export interface GridWeddingDate {
   date: string;
   couple_names: string;
   wedding_id: string;
+  couple_id: string | null;
 }
 
 export interface GridBlockedDate {
@@ -42,6 +42,7 @@ interface GridViewProps {
   roleFilter: string;
   onRoleFilterChange: (role: string) => void;
   onShooterClick?: (shooterId: string) => void;
+  onCoupleClick?: (coupleId: string) => void;
 }
 
 function formatDateHeader(dateStr: string): { dow: string; monthDay: string } {
@@ -59,6 +60,7 @@ export function GridView({
   roleFilter,
   onRoleFilterChange,
   onShooterClick,
+  onCoupleClick,
 }: GridViewProps) {
 
   const today = new Date();
@@ -142,13 +144,23 @@ export function GridView({
                     <div className="text-[9px] text-muted-foreground">{dow}</div>
                     <div className="text-[11px] font-medium text-foreground">{monthDay}</div>
                     {weddings.map((w) => (
-                      <Link
-                        key={w.wedding_id}
-                        href={`/admin/weddings/${w.wedding_id}`}
-                        className="mt-0.5 block truncate text-[10px] font-medium text-warning-text hover:text-primary hover:underline"
-                      >
-                        {w.couple_names}
-                      </Link>
+                      w.couple_id ? (
+                        <button
+                          key={w.wedding_id}
+                          type="button"
+                          onClick={() => onCoupleClick?.(w.couple_id!)}
+                          className="mt-0.5 block truncate text-[10px] font-medium text-warning-text hover:text-primary hover:underline"
+                        >
+                          {w.couple_names}
+                        </button>
+                      ) : (
+                        <span
+                          key={w.wedding_id}
+                          className="mt-0.5 block truncate text-[10px] font-medium text-warning-text"
+                        >
+                          {w.couple_names}
+                        </span>
+                      )
                     ))}
                   </th>
                 );

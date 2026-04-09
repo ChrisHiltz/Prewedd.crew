@@ -8,6 +8,7 @@ import { KanbanView } from "@/components/admin/KanbanView";
 import { GridView, type GridShooter, type GridWeddingDate, type GridBlockedDate, type GridAssignment } from "@/components/admin/GridView";
 import { AssignSlideOut } from "@/components/admin/AssignSlideOut";
 import { ShooterPanel } from "@/components/admin/ShooterPanel";
+import { CouplePanel } from "@/components/admin/CouplePanel";
 import { type WeddingCardData, type WeddingCardAssignment } from "@/components/admin/WeddingCard";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { RoleIcon } from "@/components/ui/role-icon";
@@ -89,6 +90,19 @@ export default function AdminCalendarPage() {
 
   // ── Shooter panel state ─────────────────────────────────────────────────────
   const [activeShooterId, setActiveShooterId] = useState<string | null>(null);
+
+  // ── Couple panel state ──────────────────────────────────────────────────────
+  const [activeCoupleId, setActiveCoupleId] = useState<string | null>(null);
+
+  function openShooterPanel(id: string) {
+    setActiveShooterId(id);
+    setActiveCoupleId(null);
+  }
+
+  function openCouplePanel(id: string) {
+    setActiveCoupleId(id);
+    setActiveShooterId(null);
+  }
 
   // ── Month helpers ──────────────────────────────────────────────────────────
   const year = currentMonth.getFullYear();
@@ -184,7 +198,7 @@ export default function AdminCalendarPage() {
         .order("name"),
       supabase
         .from("weddings")
-        .select("id, date, couples(names)")
+        .select("id, date, couple_id, couples(names)")
         .gte("date", firstDay)
         .lte("date", lastDay)
         .order("date"),
@@ -204,10 +218,12 @@ export default function AdminCalendarPage() {
       const mapped: GridWeddingDate[] = [];
       for (const w of weddingsRes.data) {
         const couples = w.couples as unknown as { names: string } | null;
+        const wRaw = w as unknown as { id: string; date: string; couple_id: string | null; couples: { names: string } | null };
         mapped.push({
-          date: w.date,
+          date: wRaw.date,
           couple_names: couples?.names ?? "TBD",
-          wedding_id: w.id,
+          wedding_id: wRaw.id,
+          couple_id: wRaw.couple_id ?? null,
         });
       }
       setGridWeddingDates(mapped);
@@ -359,7 +375,8 @@ export default function AdminCalendarPage() {
           assignments={gridAssignments}
           roleFilter={gridRoleFilter}
           onRoleFilterChange={setGridRoleFilter}
-          onShooterClick={setActiveShooterId}
+          onShooterClick={openShooterPanel}
+          onCoupleClick={openCouplePanel}
         />
       )}
 
@@ -380,6 +397,9 @@ export default function AdminCalendarPage() {
 
       {/* Shooter info panel */}
       <ShooterPanel shooterId={activeShooterId} onClose={() => setActiveShooterId(null)} />
+
+      {/* Couple info panel */}
+      <CouplePanel coupleId={activeCoupleId} onClose={() => setActiveCoupleId(null)} />
 
       {/* Wedding info side panel */}
       <Sheet open={infoWedding !== null} onOpenChange={(open) => { if (!open) setInfoWedding(null); }}>
