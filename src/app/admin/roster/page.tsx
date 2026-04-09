@@ -4,9 +4,10 @@ import { useState, useEffect } from "react";
 import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Search, X, ChevronRight, UserPlus, Send, Check } from "lucide-react";
+import { Search, X, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SELECTABLE_ROLES, ROLE_SHORT_LABELS, ROLE_FILTER_OPTIONS } from "@/lib/utils/roles";
+import { InviteUserDialog } from "@/components/admin/InviteUserDialog";
 
 const ROLES_LIST = SELECTABLE_ROLES;
 const ROLE_LABELS = ROLE_SHORT_LABELS;
@@ -95,7 +96,7 @@ export default function AdminRosterPage() {
                 {shooters.length} shooter{shooters.length !== 1 ? "s" : ""} onboarded
               </p>
             </div>
-            <InviteShooterButton />
+            <InviteUserDialog />
           </div>
         </div>
 
@@ -636,125 +637,6 @@ function DetailPanel({
   );
 }
 
-function InviteShooterButton() {
-  const [showForm, setShowForm] = useState(false);
-  const [email, setEmail] = useState("");
-  const [sending, setSending] = useState(false);
-  const [sent, setSent] = useState(false);
-  const [error, setError] = useState("");
-
-  async function handleInvite(e: React.FormEvent) {
-    e.preventDefault();
-    if (!email.trim()) return;
-    setError("");
-    setSending(true);
-
-    const trimmedEmail = email.trim();
-    const siteUrl = window.location.origin;
-
-    // Step 1: Send the magic link (creates the auth user on first use)
-    const supabase = createClient();
-    const { error: otpError } = await supabase.auth.signInWithOtp({
-      email: trimmedEmail,
-      options: {
-        emailRedirectTo: `${siteUrl}/auth/callback`,
-      },
-    });
-
-    if (otpError) {
-      setError(otpError.message);
-      setSending(false);
-      return;
-    }
-
-    // Step 2: Send a warm welcome email via Resend with context
-    await fetch("/api/notify", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        to: trimmedEmail,
-        subject: "Welcome to the team! Here's what's next",
-        html: `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 520px; margin: 0 auto; padding: 32px 24px;">
-  <div style="background: white; border-radius: 12px; padding: 32px 24px; border: 1px solid #e8d0d8;">
-    <h2 style="font-size: 22px; color: #2e1a23; margin: 0 0 16px;">Hey, welcome to the crew!</h2>
-    <p style="font-size: 15px; color: #6b5660; line-height: 1.6; margin: 0 0 12px;">You've been invited to join the TLIC team portal. This is where you'll manage your wedding assignments, review couple briefs, check your schedule, and prep for each wedding day.</p>
-    <p style="font-size: 15px; color: #6b5660; line-height: 1.6; margin: 0 0 12px;">Here's how it works:</p>
-    <ul style="font-size: 14px; color: #6b5660; line-height: 1.8; padding-left: 20px; margin: 0 0 16px;">
-      <li><strong style="color: #2e1a23;">Set up your profile</strong> - your roles, rates, and working style</li>
-      <li><strong style="color: #2e1a23;">Get assigned to weddings</strong> - you'll see the couple, venue, and your role</li>
-      <li><strong style="color: #2e1a23;">Review the brief</strong> - everything you need to know about the couple and the day</li>
-      <li><strong style="color: #2e1a23;">Take the quiz</strong> - quick check to make sure you're prepped and ready</li>
-      <li><strong style="color: #2e1a23;">Block your calendar</strong> - mark dates you're unavailable</li>
-    </ul>
-    <p style="font-size: 15px; color: #6b5660; line-height: 1.6; margin: 0 0 24px;">You should've also received a separate sign-in email with a magic link. Tap that link to get started. No passwords needed, ever.</p>
-    <p style="font-size: 15px; color: #6b5660; line-height: 1.6; margin: 0 0 4px;">Excited to have you on the team!</p>
-    <p style="font-size: 15px; color: #2e1a23; font-weight: 600; margin: 0;">- The TLIC Team</p>
-  </div>
-</div>`,
-      }),
-    });
-
-    setSending(false);
-    setSent(true);
-    setTimeout(() => {
-      setSent(false);
-      setShowForm(false);
-      setEmail("");
-    }, 3000);
-  }
-
-  if (sent) {
-    return (
-      <div className="flex items-center gap-1.5 text-xs font-medium text-success">
-        <Check className="size-3.5" />
-        Invite sent!
-      </div>
-    );
-  }
-
-  if (!showForm) {
-    return (
-      <Button
-        size="sm"
-        onClick={() => setShowForm(true)}
-        className="gap-1.5 bg-primary text-white hover:bg-primary-hover"
-      >
-        <UserPlus className="size-3.5" />
-        Invite Shooter
-      </Button>
-    );
-  }
-
-  return (
-    <form onSubmit={handleInvite} className="flex items-center gap-2">
-      <input
-        type="email"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        placeholder="shooter@email.com"
-        autoFocus
-        className="h-8 w-48 rounded-lg border border-border bg-background px-3 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-      />
-      <Button
-        type="submit"
-        size="sm"
-        disabled={sending || !email.trim()}
-        className="gap-1.5 bg-primary text-white hover:bg-primary-hover"
-      >
-        <Send className="size-3" />
-        {sending ? "..." : "Send"}
-      </Button>
-      <button
-        type="button"
-        onClick={() => { setShowForm(false); setEmail(""); setError(""); }}
-        className="rounded p-1 text-muted-foreground hover:text-foreground"
-      >
-        <X className="size-4" />
-      </button>
-      {error && <span className="text-[10px] text-error">{error}</span>}
-    </form>
-  );
-}
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
