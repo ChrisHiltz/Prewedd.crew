@@ -1,7 +1,7 @@
 // src/components/admin/AssignSlideOut.tsx
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import Image from "next/image";
 import { Star } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -133,7 +133,7 @@ export function AssignSlideOut({
   const [assigning, setAssigning] = useState<string | null>(null); // shooter id being assigned
   const [error, setError] = useState<string | null>(null);
 
-  const weekendDays = getWeekendWindow(weddingDate); // [prev, wedding, next]
+  const weekendDays = useMemo(() => getWeekendWindow(weddingDate), [weddingDate]); // [prev, wedding, next]
 
   // ── Load shooters + their availability for the weekend window ──────────────
 
