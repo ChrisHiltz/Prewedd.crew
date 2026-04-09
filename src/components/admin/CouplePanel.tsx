@@ -263,7 +263,7 @@ export function CouplePanel({ coupleId, onClose, onShooterClick, onAssignClick }
 
   return (
     <div className={cn(
-      "fixed right-0 top-0 h-screen w-96 z-30 border-l border-border bg-card shadow-xl overflow-y-auto transition-transform duration-200",
+      "fixed right-0 top-0 h-screen w-96 z-[55] border-l border-border bg-card shadow-xl overflow-y-auto transition-transform duration-200",
       isVisible ? "translate-x-0" : "translate-x-full"
     )}>
       <button type="button" onClick={onClose} className="absolute right-2 top-2 z-10 flex size-6 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground">
