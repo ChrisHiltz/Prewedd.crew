@@ -1,15 +1,10 @@
 // src/components/admin/GridView.tsx
 "use client";
 
-import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
-import { ROLE_FILTER_OPTIONS, ROLE_SHORT_LABELS } from "@/lib/utils/roles";
-import { RoleIcon } from "@/components/ui/role-icon";
-import { skillRating } from "@/lib/utils/scheduling";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { Star } from "lucide-react";
+import { ROLE_FILTER_OPTIONS } from "@/lib/utils/roles";
 
 export interface GridShooter {
   id: string;
@@ -46,6 +41,7 @@ interface GridViewProps {
   assignments: GridAssignment[];
   roleFilter: string;
   onRoleFilterChange: (role: string) => void;
+  onShooterClick?: (shooterId: string) => void;
 }
 
 function formatDateHeader(dateStr: string): { dow: string; monthDay: string } {
@@ -62,8 +58,8 @@ export function GridView({
   assignments,
   roleFilter,
   onRoleFilterChange,
+  onShooterClick,
 }: GridViewProps) {
-  const [selectedShooter, setSelectedShooter] = useState<GridShooter | null>(null);
 
   const today = new Date();
   const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
@@ -165,7 +161,7 @@ export function GridView({
                 <td className="sticky left-0 z-10 border-r border-border bg-card px-3 py-2">
                   <button
                     type="button"
-                    onClick={() => setSelectedShooter(shooter)}
+                    onClick={() => onShooterClick?.(shooter.id)}
                     className="flex items-center gap-2 hover:opacity-80"
                   >
                     <div className="relative size-6 shrink-0 overflow-hidden rounded-full bg-muted">
@@ -225,81 +221,6 @@ export function GridView({
         {uniqueWeddingDates.length} wedding date{uniqueWeddingDates.length !== 1 ? "s" : ""} · {filteredShooters.length} shooter{filteredShooters.length !== 1 ? "s" : ""}
       </p>
 
-      {/* Shooter info side panel */}
-      <Sheet open={selectedShooter !== null} onOpenChange={(open) => { if (!open) setSelectedShooter(null); }}>
-        <SheetContent side="right" className="w-full max-w-sm overflow-y-auto sm:max-w-sm">
-          {selectedShooter && (
-            <>
-              <SheetHeader className="pb-4">
-                <div className="flex items-center gap-3">
-                  <div className="relative size-12 shrink-0 overflow-hidden rounded-full bg-muted">
-                    {selectedShooter.headshot_url ? (
-                      <Image src={selectedShooter.headshot_url} alt={selectedShooter.name} fill className="object-cover" />
-                    ) : (
-                      <div className="flex size-full items-center justify-center text-lg font-bold text-muted-foreground">
-                        {selectedShooter.name.charAt(0)}
-                      </div>
-                    )}
-                  </div>
-                  <div>
-                    <SheetTitle className="text-base">{selectedShooter.name}</SheetTitle>
-                    <span className={cn(
-                      "mt-0.5 inline-block rounded-full px-2 py-0.5 text-[10px] font-medium",
-                      selectedShooter.is_employee
-                        ? "bg-blue-100 text-blue-700"
-                        : "bg-muted text-muted-foreground"
-                    )}>
-                      {selectedShooter.is_employee ? "W2 Employee" : "Contractor"}
-                    </span>
-                  </div>
-                </div>
-              </SheetHeader>
-
-              <div className="space-y-4">
-                {/* Roles */}
-                <div>
-                  <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Roles</h3>
-                  <div className="flex flex-wrap gap-1.5">
-                    {selectedShooter.roles.map((role) => (
-                      <span key={role} className="inline-flex items-center gap-1 rounded-full border border-border px-2 py-0.5">
-                        <RoleIcon role={role} size="xs" />
-                        <span className="text-[10px] font-medium">{ROLE_SHORT_LABELS[role as keyof typeof ROLE_SHORT_LABELS] ?? role}</span>
-                      </span>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Skill Rating */}
-                {selectedShooter.skill_scores && Object.keys(selectedShooter.skill_scores).length > 0 && (
-                  <div>
-                    <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Skill Rating</h3>
-                    <div className="flex items-center gap-1.5">
-                      <Star className="size-4 fill-amber-400 text-amber-400" />
-                      <span className="text-sm font-semibold">{skillRating(selectedShooter.skill_scores).toFixed(1)}</span>
-                      <span className="text-xs text-muted-foreground">/ 5.0</span>
-                    </div>
-                  </div>
-                )}
-
-                {/* Rates */}
-                {selectedShooter.rates && Object.keys(selectedShooter.rates).length > 0 && (
-                  <div>
-                    <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Rates</h3>
-                    <div className="space-y-1">
-                      {Object.entries(selectedShooter.rates).map(([role, rate]) => (
-                        <div key={role} className="flex items-center justify-between text-sm">
-                          <span className="text-muted-foreground">{ROLE_SHORT_LABELS[role as keyof typeof ROLE_SHORT_LABELS] ?? role}</span>
-                          <span className="font-medium">${rate}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </>
-          )}
-        </SheetContent>
-      </Sheet>
     </div>
   );
 }

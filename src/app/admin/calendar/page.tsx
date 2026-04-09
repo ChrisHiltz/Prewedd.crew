@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { KanbanView } from "@/components/admin/KanbanView";
 import { GridView, type GridShooter, type GridWeddingDate, type GridBlockedDate, type GridAssignment } from "@/components/admin/GridView";
 import { AssignSlideOut } from "@/components/admin/AssignSlideOut";
+import { ShooterPanel } from "@/components/admin/ShooterPanel";
 import { type WeddingCardData, type WeddingCardAssignment } from "@/components/admin/WeddingCard";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { RoleIcon } from "@/components/ui/role-icon";
@@ -85,6 +86,9 @@ export default function AdminCalendarPage() {
   // ── Assign slide-out state ──────────────────────────────────────────────────
   const [assignTarget, setAssignTarget] = useState<AssignTarget | null>(null);
   const [infoWedding, setInfoWedding] = useState<WeddingCardData | null>(null);
+
+  // ── Shooter panel state ─────────────────────────────────────────────────────
+  const [activeShooterId, setActiveShooterId] = useState<string | null>(null);
 
   // ── Month helpers ──────────────────────────────────────────────────────────
   const year = currentMonth.getFullYear();
@@ -355,6 +359,7 @@ export default function AdminCalendarPage() {
           assignments={gridAssignments}
           roleFilter={gridRoleFilter}
           onRoleFilterChange={setGridRoleFilter}
+          onShooterClick={setActiveShooterId}
         />
       )}
 
@@ -372,6 +377,9 @@ export default function AdminCalendarPage() {
           onAssigned={handleAssigned}
         />
       )}
+
+      {/* Shooter info panel */}
+      <ShooterPanel shooterId={activeShooterId} onClose={() => setActiveShooterId(null)} />
 
       {/* Wedding info side panel */}
       <Sheet open={infoWedding !== null} onOpenChange={(open) => { if (!open) setInfoWedding(null); }}>
