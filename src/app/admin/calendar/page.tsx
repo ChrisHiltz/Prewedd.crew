@@ -95,8 +95,9 @@ export default function AdminCalendarPage() {
   const [activeCoupleId, setActiveCoupleId] = useState<string | null>(null);
 
   function openShooterPanel(id: string) {
+    // Don't clear couple panel — shooter panel stacks on top.
+    // When shooter panel closes, couple panel is still there.
     setActiveShooterId(id);
-    setActiveCoupleId(null);
   }
 
   function openCouplePanel(id: string) {

@@ -160,7 +160,7 @@ export function ShooterPanel({ shooterId, onClose }: ShooterPanelProps) {
   return (
     <div
       className={cn(
-        "fixed right-0 top-0 h-screen w-96 z-30 border-l border-border bg-card shadow-xl overflow-y-auto transition-transform duration-200",
+        "fixed right-0 top-0 h-screen w-96 z-40 border-l border-border bg-card shadow-xl overflow-y-auto transition-transform duration-200",
         isVisible ? "translate-x-0" : "translate-x-full"
       )}
     >
