@@ -3,10 +3,12 @@
 
 import { useMemo } from "react";
 import { WeddingCard, type WeddingCardData } from "@/components/admin/WeddingCard";
+import { getNeededRoles, getUnfilledRoles } from "@/lib/utils/scheduling";
 
 interface KanbanViewProps {
   weddings: WeddingCardData[];
   onAssignClick: (weddingId: string, role: string) => void;
+  onCardClick?: (wedding: WeddingCardData) => void;
 }
 
 function formatMonthLabel(dateStr: string): string {
@@ -30,7 +32,7 @@ function getMonthKey(dateStr: string): string {
   return dateStr.slice(0, 7); // "YYYY-MM"
 }
 
-export function KanbanView({ weddings, onAssignClick }: KanbanViewProps) {
+export function KanbanView({ weddings, onAssignClick, onCardClick }: KanbanViewProps) {
   // Group weddings by month, then by date within each month
   const months = useMemo(() => {
     const monthMap = new Map<string, Map<string, WeddingCardData[]>>();
@@ -86,16 +88,34 @@ export function KanbanView({ weddings, onAssignClick }: KanbanViewProps) {
           {/* Horizontal scroll of date columns */}
           <div className="overflow-x-auto pb-2">
             <div className="flex gap-3" style={{ minWidth: "max-content" }}>
-              {dates.map(({ date, header, weddings: dateWeddings }) => (
+              {dates.map(({ date, header, weddings: dateWeddings }) => {
+                const totalGaps = dateWeddings.reduce((sum, w) => {
+                  const needed = getNeededRoles(w);
+                  const assigned = w.assignments.map((a) => a.role);
+                  return sum + getUnfilledRoles(needed, assigned).length;
+                }, 0);
+
+                return (
                   <div key={date} className="w-52 shrink-0">
-                    {/* Column header — date only, gap counts are in individual cards */}
-                    <div className="mb-2 rounded-lg border border-border bg-muted/30 px-2.5 py-1.5 text-center">
-                      <div className="text-[9px] font-medium uppercase tracking-wide text-muted-foreground">
-                        {header.dow}
+                    {/* Column header — date with gap badge to the right */}
+                    <div className="mb-2 flex items-center justify-between rounded-lg border border-border bg-muted/30 px-2.5 py-1.5">
+                      <div>
+                        <div className="text-[9px] font-medium uppercase tracking-wide text-muted-foreground">
+                          {header.dow}
+                        </div>
+                        <div className="text-[11px] font-semibold text-foreground">
+                          {header.monthDay}
+                        </div>
                       </div>
-                      <div className="text-[11px] font-semibold text-foreground">
-                        {header.monthDay}
-                      </div>
+                      {totalGaps > 0 ? (
+                        <span className="rounded-full bg-warning/20 px-1.5 py-0.5 text-[8px] font-medium text-warning-text">
+                          {totalGaps}
+                        </span>
+                      ) : (
+                        <span className="rounded-full bg-success/20 px-1.5 py-0.5 text-[8px] font-medium text-success">
+                          ✓
+                        </span>
+                      )}
                     </div>
 
                     {/* Wedding cards in this column */}
@@ -105,11 +125,13 @@ export function KanbanView({ weddings, onAssignClick }: KanbanViewProps) {
                           key={w.id}
                           wedding={w}
                           onAssignClick={onAssignClick}
+                          onCardClick={onCardClick}
                         />
                       ))}
                     </div>
                   </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>

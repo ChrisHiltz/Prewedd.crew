@@ -2,8 +2,7 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
-import { LinkIcon, ChevronDown, ChevronUp, ExternalLink } from "lucide-react";
+import { LinkIcon, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { RoleIcon } from "@/components/ui/role-icon";
 import { ROLE_SHORT_LABELS } from "@/lib/utils/roles";
@@ -39,6 +38,7 @@ export interface WeddingCardData extends WeddingForScheduling {
 interface WeddingCardProps {
   wedding: WeddingCardData;
   onAssignClick: (weddingId: string, role: string) => void;
+  onCardClick?: (wedding: WeddingCardData) => void;
 }
 
 const STATUS_STYLES: Record<StaffingStatus, { border: string; dot: string; label: string }> = {
@@ -48,7 +48,7 @@ const STATUS_STYLES: Record<StaffingStatus, { border: string; dot: string; label
   confirmed: { border: "border-success/60", dot: "bg-success", label: "Confirmed" },
 };
 
-export function WeddingCard({ wedding, onAssignClick }: WeddingCardProps) {
+export function WeddingCard({ wedding, onAssignClick, onCardClick }: WeddingCardProps) {
   const [expanded, setExpanded] = useState(false);
   const status = getStaffingStatus(wedding, wedding.assignments);
   const styles = STATUS_STYLES[status];
@@ -57,14 +57,14 @@ export function WeddingCard({ wedding, onAssignClick }: WeddingCardProps) {
   const unfilledRoles = getUnfilledRoles(neededRoles, assignedRoles);
 
   const timelineUrl = wedding.timeline_internal_url ?? wedding.timeline_couple_url;
-  const hasDetails = wedding.package || wedding.hours_of_coverage || wedding.gear_notes || timelineUrl || (wedding.add_ons && wedding.add_ons.length > 0);
 
   return (
     <div
       className={cn(
-        "relative rounded-lg border-2 bg-card p-3 shadow-sm transition-shadow hover:shadow-md",
+        "relative rounded-lg border-2 bg-card p-3 shadow-sm transition-shadow hover:shadow-md cursor-pointer",
         styles.border
       )}
+      onClick={() => setExpanded(!expanded)}
     >
       {/* Status dot */}
       <div
@@ -72,24 +72,22 @@ export function WeddingCard({ wedding, onAssignClick }: WeddingCardProps) {
         title={styles.label}
       />
 
-      {/* Header — couple name as link */}
+      {/* Header — couple name with link icon opens side panel */}
       <div className="pr-6">
-        <Link
-          href={`/admin/weddings/${wedding.id}`}
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onCardClick?.(wedding);
+          }}
           className="group inline-flex items-center gap-1 text-xs font-semibold text-foreground leading-tight hover:text-primary"
         >
           <LinkIcon className="size-3 text-muted-foreground group-hover:text-primary" />
           {wedding.couple_names}
-        </Link>
+        </button>
         {wedding.venue_name && (
           <p className="mt-0.5 truncate text-[10px] text-muted-foreground">
             {wedding.venue_name}
-          </p>
-        )}
-        {/* Inline gap count */}
-        {unfilledRoles.length > 0 && (
-          <p className="mt-0.5 text-[9px] font-medium text-warning-text">
-            {unfilledRoles.length} role{unfilledRoles.length !== 1 ? "s" : ""} needed
           </p>
         )}
       </div>
@@ -118,7 +116,10 @@ export function WeddingCard({ wedding, onAssignClick }: WeddingCardProps) {
             <button
               key={`${role}-${i}`}
               type="button"
-              onClick={() => onAssignClick(wedding.id, role)}
+              onClick={(e) => {
+                e.stopPropagation();
+                onAssignClick(wedding.id, role);
+              }}
               className="inline-flex items-center gap-1 rounded-md border border-dashed border-muted-foreground/40 px-1.5 py-0.5 text-[9px] font-medium text-muted-foreground transition-colors hover:border-primary hover:bg-primary/5 hover:text-primary"
             >
               <span>+</span>
@@ -129,19 +130,7 @@ export function WeddingCard({ wedding, onAssignClick }: WeddingCardProps) {
         </div>
       )}
 
-      {/* Expand toggle */}
-      {hasDetails && (
-        <button
-          type="button"
-          onClick={() => setExpanded(!expanded)}
-          className="mt-2 flex w-full items-center justify-center gap-1 rounded-md py-0.5 text-[9px] font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
-        >
-          {expanded ? <ChevronUp className="size-3" /> : <ChevronDown className="size-3" />}
-          {expanded ? "Less" : "Details"}
-        </button>
-      )}
-
-      {/* Expandable details */}
+      {/* Expandable details — click card body to toggle */}
       {expanded && (
         <div className="mt-2 space-y-1.5 border-t border-border pt-2">
           {wedding.package && (
@@ -179,6 +168,7 @@ export function WeddingCard({ wedding, onAssignClick }: WeddingCardProps) {
               href={timelineUrl}
               target="_blank"
               rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
               className="inline-flex items-center gap-1 text-[10px] font-medium text-primary hover:underline"
             >
               <ExternalLink className="size-3" />

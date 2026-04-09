@@ -1,12 +1,16 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import Link from "next/link";
+import { ChevronLeft, ChevronRight, ExternalLink } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { KanbanView } from "@/components/admin/KanbanView";
 import { GridView, type GridShooter, type GridWeddingDate, type GridBlockedDate, type GridAssignment } from "@/components/admin/GridView";
 import { AssignSlideOut } from "@/components/admin/AssignSlideOut";
 import { type WeddingCardData, type WeddingCardAssignment } from "@/components/admin/WeddingCard";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { RoleIcon } from "@/components/ui/role-icon";
+import { ROLE_SHORT_LABELS } from "@/lib/utils/roles";
 
 type View = "kanban" | "grid";
 
@@ -80,6 +84,7 @@ export default function AdminCalendarPage() {
 
   // ── Assign slide-out state ──────────────────────────────────────────────────
   const [assignTarget, setAssignTarget] = useState<AssignTarget | null>(null);
+  const [infoWedding, setInfoWedding] = useState<WeddingCardData | null>(null);
 
   // ── Month helpers ──────────────────────────────────────────────────────────
   const year = currentMonth.getFullYear();
@@ -338,7 +343,7 @@ export default function AdminCalendarPage() {
         kanbanLoading ? (
           <p className="py-8 text-center text-sm text-muted-foreground">Loading…</p>
         ) : (
-          <KanbanView weddings={kanbanWeddings} onAssignClick={handleAssignClick} />
+          <KanbanView weddings={kanbanWeddings} onAssignClick={handleAssignClick} onCardClick={setInfoWedding} />
         )
       ) : gridLoading ? (
         <p className="py-8 text-center text-sm text-muted-foreground">Loading…</p>
@@ -367,6 +372,99 @@ export default function AdminCalendarPage() {
           onAssigned={handleAssigned}
         />
       )}
+
+      {/* Wedding info side panel */}
+      <Sheet open={infoWedding !== null} onOpenChange={(open) => { if (!open) setInfoWedding(null); }}>
+        <SheetContent side="right" className="w-full max-w-md overflow-y-auto sm:max-w-md">
+          {infoWedding && (
+            <>
+              <SheetHeader className="pb-4">
+                <SheetTitle className="text-base">{infoWedding.couple_names}</SheetTitle>
+                {infoWedding.venue_name && (
+                  <p className="text-sm text-muted-foreground">{infoWedding.venue_name}</p>
+                )}
+                <p className="text-sm text-muted-foreground">
+                  {new Date(infoWedding.date + "T12:00:00").toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}
+                </p>
+              </SheetHeader>
+
+              <div className="space-y-4">
+                {/* Services & Package */}
+                <div className="space-y-2">
+                  {infoWedding.services && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Services</span>
+                      <span className="font-medium">{infoWedding.services}</span>
+                    </div>
+                  )}
+                  {infoWedding.package && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Package</span>
+                      <span className="font-medium">{infoWedding.package}</span>
+                    </div>
+                  )}
+                  {infoWedding.hours_of_coverage != null && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Hours</span>
+                      <span className="font-medium">{infoWedding.hours_of_coverage}h</span>
+                    </div>
+                  )}
+                  {infoWedding.add_ons && infoWedding.add_ons.length > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Add-ons</span>
+                      <span className="font-medium">{infoWedding.add_ons.join(", ")}</span>
+                    </div>
+                  )}
+                  {infoWedding.gear_notes && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Gear</span>
+                      <span className="font-medium">{infoWedding.gear_notes}</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Team */}
+                {infoWedding.assignments.length > 0 && (
+                  <div>
+                    <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Team</h3>
+                    <div className="space-y-1.5">
+                      {infoWedding.assignments.map((a) => (
+                        <div key={a.id} className="flex items-center gap-2 rounded-md border border-border px-2.5 py-1.5">
+                          <RoleIcon role={a.role} size="sm" />
+                          <span className="text-sm font-medium">{a.shooter_name}</span>
+                          <span className="ml-auto text-xs text-muted-foreground">{ROLE_SHORT_LABELS[a.role as keyof typeof ROLE_SHORT_LABELS] ?? a.role}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Timeline link */}
+                {(infoWedding.timeline_internal_url || infoWedding.timeline_couple_url) && (
+                  <a
+                    href={infoWedding.timeline_internal_url ?? infoWedding.timeline_couple_url ?? ""}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
+                  >
+                    <ExternalLink className="size-3.5" />
+                    View Timeline
+                  </a>
+                )}
+
+                {/* Link to full record */}
+                <Link
+                  href={`/admin/weddings/${infoWedding.id}`}
+                  className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
+                >
+                  <ExternalLink className="size-3.5" />
+                  Open Full Record
+                </Link>
+              </div>
+            </>
+          )}
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
