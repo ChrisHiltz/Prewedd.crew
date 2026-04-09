@@ -21,7 +21,6 @@ export function StepBasicInfo({
 }: StepBasicInfoProps) {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
-  const [pronouns, setPronouns] = useState("");
   const [bio, setBio] = useState("");
   const [headshotFile, setHeadshotFile] = useState<File | null>(null);
   const [headshotPreview, setHeadshotPreview] = useState<string | null>(null);
@@ -96,7 +95,6 @@ export function StepBasicInfo({
         user_id: userId,
         name: name.trim(),
         phone: phone.trim(),
-        pronouns: pronouns.trim() || null,
         bio: bio.trim(),
         ...(headshotUrl && { headshot_url: headshotUrl }),
         onboarding_completed: false,
@@ -226,24 +224,6 @@ export function StepBasicInfo({
           value={phone}
           onChange={(e) => setPhone(e.target.value)}
           placeholder="(555) 123-4567"
-          className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-        />
-      </div>
-
-      {/* Pronouns */}
-      <div>
-        <label
-          htmlFor="pronouns"
-          className="mb-1.5 block text-sm font-medium text-foreground"
-        >
-          Pronouns <span className="text-xs text-muted-foreground">(optional)</span>
-        </label>
-        <input
-          id="pronouns"
-          type="text"
-          value={pronouns}
-          onChange={(e) => setPronouns(e.target.value)}
-          placeholder="e.g. she/her, he/him, they/them"
           className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
         />
       </div>
