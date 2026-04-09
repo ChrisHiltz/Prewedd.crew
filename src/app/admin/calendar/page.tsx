@@ -95,8 +95,12 @@ export default function AdminCalendarPage() {
   const [activeCoupleId, setActiveCoupleId] = useState<string | null>(null);
 
   function openShooterPanel(id: string) {
-    // Don't clear couple panel — shooter panel stacks on top.
-    // When shooter panel closes, couple panel is still there.
+    setActiveShooterId(id);
+    setActiveCoupleId(null);
+  }
+
+  // Called from CouplePanel's staffing section — keeps couple panel open
+  function openShooterFromCouple(id: string) {
     setActiveShooterId(id);
   }
 
@@ -400,7 +404,7 @@ export default function AdminCalendarPage() {
       <ShooterPanel shooterId={activeShooterId} onClose={() => setActiveShooterId(null)} />
 
       {/* Couple info panel */}
-      <CouplePanel coupleId={activeCoupleId} onClose={() => setActiveCoupleId(null)} onShooterClick={openShooterPanel} onAssignClick={handleAssignClick} />
+      <CouplePanel coupleId={activeCoupleId} onClose={() => setActiveCoupleId(null)} onShooterClick={openShooterFromCouple} onAssignClick={handleAssignClick} />
 
       {/* Wedding info side panel */}
       <Sheet open={infoWedding !== null} onOpenChange={(open) => { if (!open) setInfoWedding(null); }}>
