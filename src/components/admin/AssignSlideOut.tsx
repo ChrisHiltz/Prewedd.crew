@@ -57,6 +57,8 @@ export interface AssignSlideOutProps {
   role: string;
   /** Called after a successful assign or swap so the parent can refresh */
   onAssigned: () => void;
+  /** Opens the global ShooterPanel for this shooter */
+  onShooterClick?: (shooterId: string) => void;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -82,36 +84,29 @@ function rateForRole(
 function DayCell({ status }: { status: DayStatus }) {
   if (status.type === "free") {
     return (
-      <span className="inline-flex h-5 w-12 items-center justify-center rounded bg-success/15 text-[9px] font-semibold text-success">
-        Free
+      <span className="inline-flex size-6 items-center justify-center rounded bg-success/15 text-[10px] font-bold text-success" title="Free">
+        ✓
       </span>
     );
   }
   if (status.type === "blocked") {
     return (
-      <span className="inline-flex h-5 w-12 items-center justify-center rounded bg-error/15 text-[9px] font-semibold text-error">
-        Blocked
+      <span className="inline-flex size-6 items-center justify-center rounded bg-error/15 text-[10px] font-bold text-error" title="Blocked">
+        ×
       </span>
     );
   }
   if (status.type === "on_team") {
     return (
-      <span
-        className="inline-flex h-5 w-12 items-center justify-center gap-0.5 rounded bg-info/15 text-[9px] font-semibold text-info"
-        title="Already on this wedding"
-      >
-        <Star className="size-2.5 fill-current" />
-        Team
+      <span className="inline-flex size-6 items-center justify-center rounded bg-info/15 text-[10px] font-bold text-info" title="On this team">
+        ★
       </span>
     );
   }
   // booked
   return (
-    <span
-      className="inline-flex h-5 w-12 items-center justify-center rounded bg-warning/20 text-[9px] font-semibold text-warning-text"
-      title={`Booked: ${status.couple_name}`}
-    >
-      Booked
+    <span className="inline-flex size-6 items-center justify-center rounded bg-warning/20 text-[10px] font-bold text-warning-text" title={`Booked: ${status.couple_name}`}>
+      B
     </span>
   );
 }
@@ -126,6 +121,7 @@ export function AssignSlideOut({
   coupleNames,
   role,
   onAssigned,
+  onShooterClick,
 }: AssignSlideOutProps) {
   const [shooters, setShooters] = useState<ShooterRow[]>([]);
   const [loading, setLoading] = useState(false);
@@ -436,90 +432,73 @@ export function AssignSlideOut({
                 const skill = skillRating(shooter.skill_scores);
                 const isLoading = assigning === shooter.id;
 
+                // Display name: first name + last initial
+                const nameParts = shooter.name.split(" ");
+                const displayName = nameParts.length > 1
+                  ? `${nameParts[0]} ${nameParts[nameParts.length - 1].charAt(0)}.`
+                  : nameParts[0];
+
                 return (
                   <div
                     key={shooter.id}
                     className={cn(
-                      "flex items-center gap-2 rounded-lg border border-border bg-card p-2 transition-colors",
+                      "flex items-center gap-1.5 rounded-lg border border-border bg-card px-2 py-1.5 transition-colors",
                       isOnTeam && "border-info/40 bg-info/5",
-                      isWeddingDayBlocked && "opacity-60"
+                      isWeddingDayBlocked && "opacity-50"
                     )}
                   >
-                    {/* Avatar + name */}
-                    <div className="flex flex-1 items-center gap-2 min-w-0">
-                      <div className="relative size-8 shrink-0 overflow-hidden rounded-full bg-muted">
-                        {shooter.headshot_url ? (
-                          <Image
-                            src={shooter.headshot_url}
-                            alt={shooter.name}
-                            fill
-                            className="object-cover"
-                          />
-                        ) : (
-                          <div className="flex size-full items-center justify-center text-[9px] font-bold text-muted-foreground">
-                            {shooter.name.charAt(0)}
-                          </div>
-                        )}
-                      </div>
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-1">
-                          <span className="truncate text-xs font-medium text-foreground">
-                            {shooter.name}
-                          </span>
-                          {shooter.is_employee && (
-                            <span className="shrink-0 rounded-full bg-primary/10 px-1 py-0 text-[8px] font-semibold text-primary">
-                              W2
-                            </span>
-                          )}
+                    {/* Avatar */}
+                    <div className="relative size-7 shrink-0 overflow-hidden rounded-full bg-muted">
+                      {shooter.headshot_url ? (
+                        <Image src={shooter.headshot_url} alt={shooter.name} fill className="object-cover" />
+                      ) : (
+                        <div className="flex size-full items-center justify-center text-[8px] font-bold text-muted-foreground">
+                          {shooter.name.charAt(0)}
                         </div>
-                        <div className="flex items-center gap-2 mt-0.5">
-                          {skill > 0 && (
-                            <span className="text-[9px] text-muted-foreground">
-                              ★ {skill.toFixed(1)}
-                            </span>
-                          )}
-                          {rate !== null && (
-                            <span className="text-[9px] text-muted-foreground">
-                              ${rate}
-                            </span>
-                          )}
-                        </div>
+                      )}
+                    </div>
+
+                    {/* Name + meta */}
+                    <div className="min-w-0 flex-1">
+                      <button
+                        type="button"
+                        onClick={() => onShooterClick?.(shooter.id)}
+                        className="truncate text-xs font-medium text-foreground hover:text-primary"
+                        title={shooter.name}
+                      >
+                        {displayName}
+                      </button>
+                      <div className="flex items-center gap-1.5">
+                        <span className={cn(
+                          "rounded-full px-1 py-0 text-[7px] font-semibold",
+                          shooter.is_employee ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
+                        )}>
+                          {shooter.is_employee ? "W2" : "Contr."}
+                        </span>
+                        {skill > 0 && <span className="text-[8px] text-muted-foreground">★{skill.toFixed(1)}</span>}
+                        {rate !== null && <span className="text-[8px] text-muted-foreground">${rate}</span>}
                       </div>
                     </div>
 
-                    {/* Day status cells */}
-                    <div className="flex gap-1 shrink-0">
+                    {/* Day cells */}
+                    <div className="flex gap-0.5 shrink-0">
                       {shooter.dayStatuses.map((status, i) => (
                         <DayCell key={i} status={status} />
                       ))}
                     </div>
 
-                    {/* Action button */}
-                    <div className="w-20 shrink-0 flex justify-end">
+                    {/* Action */}
+                    <div className="w-12 shrink-0 text-right">
                       {isOnTeam ? (
-                        <span className="text-[9px] font-medium text-info">
-                          On team
-                        </span>
+                        <span className="text-[8px] font-medium text-info">On team</span>
                       ) : isWeddingDayBooked ? (
-                        <button
-                          type="button"
-                          onClick={() => handleAssign(shooter.id, swapWeddingId)}
-                          disabled={isLoading}
-                          className="rounded-md bg-warning/20 px-2 py-1 text-[10px] font-semibold text-warning-text transition-colors hover:bg-warning/30 disabled:opacity-50"
-                        >
+                        <button type="button" onClick={() => handleAssign(shooter.id, swapWeddingId)} disabled={isLoading} className="rounded bg-warning/20 px-1.5 py-0.5 text-[9px] font-semibold text-warning-text hover:bg-warning/30 disabled:opacity-50">
                           {isLoading ? "…" : "Swap"}
                         </button>
                       ) : isWeddingDayBlocked ? (
-                        <span className="text-[9px] text-muted-foreground">
-                          Blocked
-                        </span>
+                        <span className="text-[8px] text-muted-foreground">Blocked</span>
                       ) : (
-                        <button
-                          type="button"
-                          onClick={() => handleAssign(shooter.id)}
-                          disabled={isLoading}
-                          className="rounded-md bg-primary px-2 py-1 text-[10px] font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
-                        >
+                        <button type="button" onClick={() => handleAssign(shooter.id)} disabled={isLoading} className="rounded bg-primary px-1.5 py-0.5 text-[9px] font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50">
                           {isLoading ? "…" : "Add"}
                         </button>
                       )}
