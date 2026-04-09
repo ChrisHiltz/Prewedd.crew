@@ -75,8 +75,9 @@ export default function AdminLayout({
         </div>
       </aside>
 
-      {/* Main content */}
-      <main className="ml-56 flex flex-1 flex-col">{children}</main>
+      {/* Main content — h-screen + overflow-y-auto makes this the scroll container,
+           so sticky headers inside children work correctly */}
+      <main className="ml-56 h-screen overflow-y-auto">{children}</main>
     </div>
   );
 }
