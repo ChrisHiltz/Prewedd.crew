@@ -130,7 +130,7 @@ export function GridView({
       </div>
 
       <div className="overflow-x-auto rounded-lg border border-border">
-        <table className="w-max border-collapse">
+        <table className="min-w-full border-collapse">
           <thead>
             <tr>
               <th className="sticky left-0 z-10 min-w-[160px] border-b border-r border-border bg-card px-3 py-2 text-left text-xs font-medium text-muted-foreground">
