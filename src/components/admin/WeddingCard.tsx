@@ -1,6 +1,9 @@
 // src/components/admin/WeddingCard.tsx
 "use client";
 
+import { useState } from "react";
+import Link from "next/link";
+import { LinkIcon, ChevronDown, ChevronUp, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { RoleIcon } from "@/components/ui/role-icon";
 import { ROLE_SHORT_LABELS } from "@/lib/utils/roles";
@@ -25,6 +28,12 @@ export interface WeddingCardData extends WeddingForScheduling {
   venue_name: string | null;
   couple_names: string;
   assignments: WeddingCardAssignment[];
+  // Expandable detail fields
+  package: string | null;
+  hours_of_coverage: number | null;
+  gear_notes: string | null;
+  timeline_internal_url: string | null;
+  timeline_couple_url: string | null;
 }
 
 interface WeddingCardProps {
@@ -39,17 +48,16 @@ const STATUS_STYLES: Record<StaffingStatus, { border: string; dot: string; label
   confirmed: { border: "border-success/60", dot: "bg-success", label: "Confirmed" },
 };
 
-function formatTime(dateStr: string): string {
-  const d = new Date(dateStr + "T12:00:00");
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-}
-
 export function WeddingCard({ wedding, onAssignClick }: WeddingCardProps) {
+  const [expanded, setExpanded] = useState(false);
   const status = getStaffingStatus(wedding, wedding.assignments);
   const styles = STATUS_STYLES[status];
   const neededRoles = getNeededRoles(wedding);
   const assignedRoles = wedding.assignments.map((a) => a.role);
   const unfilledRoles = getUnfilledRoles(neededRoles, assignedRoles);
+
+  const timelineUrl = wedding.timeline_internal_url ?? wedding.timeline_couple_url;
+  const hasDetails = wedding.package || wedding.hours_of_coverage || wedding.gear_notes || timelineUrl || (wedding.add_ons && wedding.add_ons.length > 0);
 
   return (
     <div
@@ -64,14 +72,24 @@ export function WeddingCard({ wedding, onAssignClick }: WeddingCardProps) {
         title={styles.label}
       />
 
-      {/* Header */}
-      <div className="pr-4">
-        <p className="text-xs font-semibold text-foreground leading-tight">
+      {/* Header — couple name as link */}
+      <div className="pr-6">
+        <Link
+          href={`/admin/weddings/${wedding.id}`}
+          className="group inline-flex items-center gap-1 text-xs font-semibold text-foreground leading-tight hover:text-primary"
+        >
+          <LinkIcon className="size-3 text-muted-foreground group-hover:text-primary" />
           {wedding.couple_names}
-        </p>
+        </Link>
         {wedding.venue_name && (
           <p className="mt-0.5 truncate text-[10px] text-muted-foreground">
             {wedding.venue_name}
+          </p>
+        )}
+        {/* Inline gap count */}
+        {unfilledRoles.length > 0 && (
+          <p className="mt-0.5 text-[9px] font-medium text-warning-text">
+            {unfilledRoles.length} role{unfilledRoles.length !== 1 ? "s" : ""} needed
           </p>
         )}
       </div>
@@ -108,6 +126,65 @@ export function WeddingCard({ wedding, onAssignClick }: WeddingCardProps) {
               <span>{ROLE_SHORT_LABELS[role as keyof typeof ROLE_SHORT_LABELS] ?? role}</span>
             </button>
           ))}
+        </div>
+      )}
+
+      {/* Expand toggle */}
+      {hasDetails && (
+        <button
+          type="button"
+          onClick={() => setExpanded(!expanded)}
+          className="mt-2 flex w-full items-center justify-center gap-1 rounded-md py-0.5 text-[9px] font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+        >
+          {expanded ? <ChevronUp className="size-3" /> : <ChevronDown className="size-3" />}
+          {expanded ? "Less" : "Details"}
+        </button>
+      )}
+
+      {/* Expandable details */}
+      {expanded && (
+        <div className="mt-2 space-y-1.5 border-t border-border pt-2">
+          {wedding.package && (
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-[9px] font-medium text-muted-foreground">Package</span>
+              <span className="text-[10px] text-foreground">{wedding.package}</span>
+            </div>
+          )}
+          {wedding.services && (
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-[9px] font-medium text-muted-foreground">Services</span>
+              <span className="text-[10px] text-foreground">{wedding.services}</span>
+            </div>
+          )}
+          {wedding.hours_of_coverage != null && (
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-[9px] font-medium text-muted-foreground">Hours</span>
+              <span className="text-[10px] text-foreground">{wedding.hours_of_coverage}h</span>
+            </div>
+          )}
+          {wedding.add_ons && wedding.add_ons.length > 0 && (
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-[9px] font-medium text-muted-foreground">Add-ons</span>
+              <span className="text-[10px] text-foreground">{wedding.add_ons.join(", ")}</span>
+            </div>
+          )}
+          {wedding.gear_notes && (
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-[9px] font-medium text-muted-foreground">Gear</span>
+              <span className="text-[10px] text-foreground">{wedding.gear_notes}</span>
+            </div>
+          )}
+          {timelineUrl && (
+            <a
+              href={timelineUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-[10px] font-medium text-primary hover:underline"
+            >
+              <ExternalLink className="size-3" />
+              Timeline
+            </a>
+          )}
         </div>
       )}
     </div>

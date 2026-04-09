@@ -42,6 +42,11 @@ interface RawKanbanWedding {
   num_assistants: number;
   assistant_roles: string[] | null;
   add_ons: string[] | null;
+  package: string | null;
+  hours_of_coverage: number | null;
+  gear_notes: string | null;
+  timeline_internal_url: string | null;
+  timeline_couple_url: string | null;
   couples: { names: string } | null;
   assignments: RawKanbanAssignment[];
 }
@@ -105,6 +110,11 @@ export default function AdminCalendarPage() {
         num_assistants,
         assistant_roles,
         add_ons,
+        package,
+        hours_of_coverage,
+        gear_notes,
+        timeline_internal_url,
+        timeline_couple_url,
         couples(names),
         assignments(id, shooter_id, role, status, brief_read, quiz_passed, shooter_profiles(id, name, headshot_url))
       `)
@@ -134,6 +144,11 @@ export default function AdminCalendarPage() {
           num_assistants: w.num_assistants ?? 0,
           assistant_roles: w.assistant_roles,
           add_ons: w.add_ons,
+          package: w.package ?? null,
+          hours_of_coverage: w.hours_of_coverage ?? null,
+          gear_notes: w.gear_notes ?? null,
+          timeline_internal_url: w.timeline_internal_url ?? null,
+          timeline_couple_url: w.timeline_couple_url ?? null,
           assignments: mappedAssignments,
         };
       });

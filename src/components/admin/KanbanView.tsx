@@ -3,7 +3,6 @@
 
 import { useMemo } from "react";
 import { WeddingCard, type WeddingCardData } from "@/components/admin/WeddingCard";
-import { getNeededRoles, getUnfilledRoles } from "@/lib/utils/scheduling";
 
 interface KanbanViewProps {
   weddings: WeddingCardData[];
@@ -87,34 +86,15 @@ export function KanbanView({ weddings, onAssignClick }: KanbanViewProps) {
           {/* Horizontal scroll of date columns */}
           <div className="overflow-x-auto pb-2">
             <div className="flex gap-3" style={{ minWidth: "max-content" }}>
-              {dates.map(({ date, header, weddings: dateWeddings }) => {
-                // Compute gap count for this date column
-                const totalGaps = dateWeddings.reduce((sum, w) => {
-                  const needed = getNeededRoles(w);
-                  const assigned = w.assignments.map((a) => a.role);
-                  return sum + getUnfilledRoles(needed, assigned).length;
-                }, 0);
-
-                return (
+              {dates.map(({ date, header, weddings: dateWeddings }) => (
                   <div key={date} className="w-52 shrink-0">
-                    {/* Column header */}
+                    {/* Column header — date only, gap counts are in individual cards */}
                     <div className="mb-2 rounded-lg border border-border bg-muted/30 px-2.5 py-1.5 text-center">
                       <div className="text-[9px] font-medium uppercase tracking-wide text-muted-foreground">
                         {header.dow}
                       </div>
                       <div className="text-[11px] font-semibold text-foreground">
                         {header.monthDay}
-                      </div>
-                      <div className="mt-0.5">
-                        {totalGaps > 0 ? (
-                          <span className="inline-flex items-center gap-0.5 rounded-full bg-warning/20 px-1.5 py-0.5 text-[8px] font-medium text-warning-text">
-                            ⚠ {totalGaps} gap{totalGaps !== 1 ? "s" : ""}
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-0.5 rounded-full bg-success/20 px-1.5 py-0.5 text-[8px] font-medium text-success">
-                            ✓ All set
-                          </span>
-                        )}
                       </div>
                     </div>
 
@@ -129,8 +109,7 @@ export function KanbanView({ weddings, onAssignClick }: KanbanViewProps) {
                       ))}
                     </div>
                   </div>
-                );
-              })}
+              ))}
             </div>
           </div>
         </div>
