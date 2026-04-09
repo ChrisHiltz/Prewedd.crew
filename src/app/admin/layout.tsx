@@ -35,7 +35,7 @@ export default function AdminLayout({
   return (
     <div className="flex min-h-screen bg-background">
       {/* Sidebar — desktop */}
-      <aside className="flex w-56 shrink-0 flex-col border-r border-border bg-card">
+      <aside className="fixed flex h-screen w-56 flex-col overflow-y-auto border-r border-border bg-card z-20">
         <div className="flex h-14 items-center px-5">
           <span className="text-sm font-bold tracking-tight text-foreground">
             PreWedd Admin
@@ -76,7 +76,7 @@ export default function AdminLayout({
       </aside>
 
       {/* Main content */}
-      <main className="flex flex-1 flex-col">{children}</main>
+      <main className="ml-56 flex flex-1 flex-col">{children}</main>
     </div>
   );
 }
