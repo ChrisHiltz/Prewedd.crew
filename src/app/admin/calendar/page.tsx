@@ -241,6 +241,7 @@ export default function AdminCalendarPage() {
       {/* Header */}
       <div className="mb-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
+
           {/* View toggle pill */}
           <div className="flex items-center rounded-lg border border-border bg-muted p-0.5">
             <button
@@ -293,6 +294,28 @@ export default function AdminCalendarPage() {
             <h1 className="text-sm font-semibold text-foreground">Upcoming Weddings</h1>
           )}
         </div>
+
+        {/* Staffing status legend (kanban view only) */}
+        {view === "kanban" && (
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1.5">
+              <span className="size-2.5 rounded-full bg-error" />
+              <span className="text-xs text-muted-foreground">Unstaffed</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="size-2.5 rounded-full bg-warning" />
+              <span className="text-xs text-muted-foreground">Partial</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="size-2.5 rounded-full bg-info" />
+              <span className="text-xs text-muted-foreground">Staffed</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="size-2.5 rounded-full bg-success" />
+              <span className="text-xs text-muted-foreground">Confirmed</span>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Content */}
