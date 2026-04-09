@@ -237,9 +237,9 @@ export default function AdminCalendarPage() {
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
-    <div className="flex flex-col p-4">
-      {/* Header */}
-      <div className="mb-4 flex items-center justify-between">
+    <div className="flex min-w-0 flex-col overflow-hidden p-4">
+      {/* Header — sticky so it stays visible while scrolling through months */}
+      <div className="sticky top-0 z-10 mb-4 flex items-center justify-between bg-background pb-2 pt-0">
         <div className="flex items-center gap-3">
 
           {/* View toggle pill */}
