@@ -277,3 +277,98 @@ export async function POST(request: NextRequest) {
     { status: 201 }
   );
 }
+
+// ─── PATCH: change assignment role (with conflict handling) ───────────────────
+
+interface PatchBody {
+  assignment_id?: string;
+  new_role?: string;
+  conflict_action?: "swap" | "remove_other" | "add_to";
+  conflict_assignment_id?: string;
+}
+
+export async function PATCH(request: NextRequest) {
+  const supabase = await createClient();
+  const adminId = await requireAdmin(supabase);
+  if (!adminId) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
+  let body: PatchBody;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  }
+
+  const { assignment_id, new_role, conflict_action, conflict_assignment_id } = body;
+
+  if (!assignment_id || !new_role) {
+    return NextResponse.json({ error: "Missing assignment_id or new_role" }, { status: 400 });
+  }
+  if (!isCrewRole(new_role)) {
+    return NextResponse.json({ error: `Invalid role: ${new_role}` }, { status: 400 });
+  }
+  if (conflict_action && !["swap", "remove_other", "add_to"].includes(conflict_action)) {
+    return NextResponse.json({ error: "Invalid conflict_action" }, { status: 400 });
+  }
+  if ((conflict_action === "swap" || conflict_action === "remove_other") && !conflict_assignment_id) {
+    return NextResponse.json(
+      { error: "Missing conflict_assignment_id for swap/remove_other" },
+      { status: 400 }
+    );
+  }
+
+  const { data: rpcResult, error: rpcError } = await supabase.rpc("change_assignment_role" as never, {
+    p_assignment_id: assignment_id,
+    p_new_role: new_role,
+    p_conflict_action: conflict_action ?? null,
+    p_conflict_assignment_id: conflict_assignment_id ?? null,
+  });
+
+  if (rpcError) {
+    return NextResponse.json({ error: (rpcError as { message: string }).message }, { status: 500 });
+  }
+
+  const result = rpcResult as Record<string, unknown> | null;
+
+  if (result?.error === "forbidden") return NextResponse.json(result, { status: 403 });
+  if (result?.error === "not_found") return NextResponse.json(result, { status: 404 });
+  if (result?.error === "invalid_role") return NextResponse.json(result, { status: 400 });
+  if (result?.error === "invalid_action") return NextResponse.json(result, { status: 400 });
+  if (result?.error === "missing_conflict_assignment_id") return NextResponse.json(result, { status: 400 });
+  if (result?.error === "conflict_mismatch") return NextResponse.json(result, { status: 400 });
+  if (result?.error === "conflict") return NextResponse.json(result, { status: 409 });
+  if (result?.error === "cannot_swap") return NextResponse.json(result, { status: 409 });
+  if (result?.error === "conflict_row_gone" || result?.error === "conflict_row_stale") {
+    return NextResponse.json(result, { status: 409 });
+  }
+  if (result?.error) return NextResponse.json(result, { status: 500 });
+
+  return NextResponse.json(result, { status: 200 });
+}
+
+// ─── DELETE: remove assignment by id ──────────────────────────────────────────
+
+export async function DELETE(request: NextRequest) {
+  const supabase = await createClient();
+  const adminId = await requireAdmin(supabase);
+  if (!adminId) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
+  let body: { assignment_id?: string };
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  }
+
+  const { assignment_id } = body;
+  if (!assignment_id) {
+    return NextResponse.json({ error: "Missing assignment_id" }, { status: 400 });
+  }
+
+  const { error } = await supabase.from("assignments").delete().eq("id", assignment_id);
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  return NextResponse.json({ ok: true }, { status: 200 });
+}
