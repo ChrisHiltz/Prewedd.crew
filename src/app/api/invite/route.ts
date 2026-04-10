@@ -150,22 +150,41 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  // Send welcome email (best-effort)
+  // Send welcome email (best-effort) — track success/failure for UI feedback
+  let emailSent = false;
+  let emailError: string | null = null;
   try {
     const emailPayload =
       role === "admin"
         ? buildAdminWelcomeEmail(normalizedEmail)
         : buildShooterWelcomeEmail(normalizedEmail);
 
-    await resend.emails.send({
+    const { error: resendError } = await resend.emails.send({
       from: "PreWedd Crew <crew@prewedd-mail.com>",
       to: emailPayload.to,
       subject: emailPayload.subject,
       html: emailPayload.html,
     });
+
+    if (resendError) {
+      emailError = resendError.message;
+      console.error("[api/invite] welcome email send failed:", resendError);
+    } else {
+      emailSent = true;
+    }
   } catch (emailErr) {
+    emailError = emailErr instanceof Error ? emailErr.message : "Unknown error";
     console.error("[api/invite] welcome email send failed:", emailErr);
   }
 
-  return NextResponse.json({ ok: true }, { status: 201 });
+  return NextResponse.json(
+    {
+      success: true,
+      emailSent,
+      warning: emailSent
+        ? undefined
+        : `Invite created but email failed to send${emailError ? ` (${emailError})` : ""}. Tell them to visit the login page.`,
+    },
+    { status: 201 }
+  );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { UserPlus, Send, Check, X } from "lucide-react";
+import { UserPlus, Send, Check, X, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -13,6 +13,7 @@ export function InviteUserDialog() {
   const [role, setRole] = useState<Role>("shooter");
   const [sending, setSending] = useState(false);
   const [successMsg, setSuccessMsg] = useState("");
+  const [warningMsg, setWarningMsg] = useState("");
   const [error, setError] = useState("");
 
   function reset() {
@@ -20,6 +21,7 @@ export function InviteUserDialog() {
     setRole("shooter");
     setError("");
     setSuccessMsg("");
+    setWarningMsg("");
     setOpen(false);
   }
 
@@ -37,20 +39,25 @@ export function InviteUserDialog() {
         body: JSON.stringify({ email: email.trim(), role }),
       });
 
+      const data = await res.json().catch(() => ({})) as { error?: string; emailSent?: boolean; warning?: string };
+
       if (!res.ok) {
-        const data = await res.json().catch(() => ({})) as { error?: string };
         setError(data.error ?? "Something went wrong. Please try again.");
         setSending(false);
         return;
       }
 
       const roleLabel = role === "admin" ? "Admin" : "Shooter";
-      setSuccessMsg(`Invite sent to ${email.trim()} as ${roleLabel}`);
+      if (data.emailSent === false) {
+        setWarningMsg(data.warning ?? `Invite created for ${email.trim()} as ${roleLabel}, but email failed to send.`);
+      } else {
+        setSuccessMsg(`Invite sent to ${email.trim()} as ${roleLabel}`);
+      }
       setSending(false);
 
       setTimeout(() => {
         reset();
-      }, 3000);
+      }, 5000);
     } catch {
       setError("Network error. Please try again.");
       setSending(false);
@@ -62,6 +69,15 @@ export function InviteUserDialog() {
       <div className="flex items-center gap-1.5 text-xs font-medium text-success">
         <Check className="size-3.5" />
         {successMsg}
+      </div>
+    );
+  }
+
+  if (warningMsg) {
+    return (
+      <div className="flex items-start gap-1.5 rounded border border-warning/40 bg-warning/10 px-2 py-1.5 text-xs text-warning-text max-w-sm">
+        <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
+        <span>{warningMsg}</span>
       </div>
     );
   }
