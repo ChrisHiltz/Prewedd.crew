@@ -5,6 +5,7 @@ import { cookies } from "next/headers";
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
+  const next = searchParams.get("next");
 
   if (code) {
     const cookieStore = await cookies();
@@ -28,6 +29,29 @@ export async function GET(request: Request) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
 
     if (!error) {
+      // Use ?next= param if present and safe (starts with /)
+      if (next && next.startsWith("/")) {
+        return NextResponse.redirect(`${origin}${next}`);
+      }
+
+      // Otherwise, redirect based on user role
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (user) {
+        const { data: userData } = await supabase
+          .from("users")
+          .select("role")
+          .eq("id", user.id)
+          .single();
+
+        if (userData?.role === "admin") {
+          return NextResponse.redirect(`${origin}/admin/calendar`);
+        }
+      }
+
+      // Default: shooter dashboard
       return NextResponse.redirect(`${origin}/dashboard`);
     }
   }

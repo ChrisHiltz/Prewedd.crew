@@ -49,7 +49,7 @@ export async function proxy(request: NextRequest) {
         .eq("id", user.id)
         .single();
       const url = request.nextUrl.clone();
-      url.pathname = loginUserData?.role === "admin" ? "/admin/weddings" : "/dashboard";
+      url.pathname = loginUserData?.role === "admin" ? "/admin/calendar" : "/dashboard";
       return NextResponse.redirect(url);
     }
     return supabaseResponse;
@@ -106,7 +106,7 @@ export async function proxy(request: NextRequest) {
   // Admins can access everything — redirect root and /admin to admin weddings
   if (role === "admin" && (pathname === "/" || pathname === "/admin")) {
     const url = request.nextUrl.clone();
-    url.pathname = "/admin/weddings";
+    url.pathname = "/admin/calendar";
     return NextResponse.redirect(url);
   }
 

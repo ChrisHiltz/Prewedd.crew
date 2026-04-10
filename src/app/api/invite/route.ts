@@ -141,7 +141,7 @@ export async function POST(request: NextRequest) {
       await supabase.auth.signInWithOtp({
         email: normalizedEmail,
         options: {
-          emailRedirectTo: "https://prewedd-crew.vercel.app/auth/callback",
+          emailRedirectTo: `https://prewedd-crew.vercel.app/auth/callback?next=${role === "admin" ? "/admin/calendar" : "/dashboard"}`,
         },
       });
     } catch (otpErr) {
