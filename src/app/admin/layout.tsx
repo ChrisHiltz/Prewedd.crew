@@ -77,7 +77,7 @@ export default function AdminLayout({
 
       {/* Main content — h-screen + overflow-y-auto makes this the scroll container,
            so sticky headers inside children work correctly */}
-      <main className="ml-56 h-screen overflow-y-auto">{children}</main>
+      <main className="ml-56 min-w-0 h-screen overflow-y-auto">{children}</main>
     </div>
   );
 }
