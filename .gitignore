@@ -54,3 +54,7 @@ supabase/.temp/
 .superpowers/
 
 .vercel
+
+# local test credentials (session cookies, never commit)
+.test-auth
+.test-auth.*
