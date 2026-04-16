@@ -128,6 +128,15 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "invalid_action" }, { status: 400 });
   }
 
+  // Validate swap-specific shape before any DB work so callers get
+  // deterministic error messages regardless of assignment email state.
+  if (action === "swapped" && !affected_ids?.[0]) {
+    return NextResponse.json(
+      { error: "missing_affected_ids", message: "swapped requires affected_ids[0]" },
+      { status: 400 }
+    );
+  }
+
   // ── Gather recipients ──────────────────────────────────────────────────
   const recipients: RecipientData[] = [];
 
@@ -141,13 +150,7 @@ export async function POST(request: NextRequest) {
   recipients.push(primary.data);
 
   if (action === "swapped") {
-    const secondaryId = affected_ids?.[0];
-    if (!secondaryId) {
-      return NextResponse.json(
-        { error: "missing_affected_ids", message: "swapped requires affected_ids[0]" },
-        { status: 400 }
-      );
-    }
+    const secondaryId = affected_ids![0];  // validated above
     const secondary = await fetchRecipient(supabase, secondaryId);
     if (!secondary.data) {
       return NextResponse.json(

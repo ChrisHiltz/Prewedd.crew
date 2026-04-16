@@ -32,10 +32,15 @@ const BASE = "https://prewedd-crew.vercel.app";
 const PROJECT_REF = "oljrnmgiaypdysmoaovo";
 const COOKIE_NAME = `sb-${PROJECT_REF}-auth-token`;
 
-// ── Fixture: Yvette & Sebastian, 2026-04-18 ──────────────────────────────
-const WEDDING_ID = "8505b7a4-2b8b-49a0-bf16-8df2ee034939";
-const KATIE_ASSIGNMENT = "9cadd554-30c6-4dd4-b100-1cc57dc28b3f"; // lead_photo
-const CALEB_ASSIGNMENT = "1295e451-11e3-44fa-8fce-ab6ff7d27cd4"; // lead_video
+// ── Fixture: Chris Hiltz's own assignment on Sean & Ashleigh (2026-04-18) ──
+// Chris is currently the only shooter in the roster with a linked user
+// account + verified email, so he's the only assignment that can reach the
+// Resend send path. Other assignments 404 because their shooter_profiles
+// have user_id = null (rostered but not yet invited). This is a legitimate
+// production state; the popover UI in Step 8 will hide the "Notify?" prompt
+// when shooter has no email.
+const WEDDING_ID = "0468ea5e-efa6-4d86-917f-f33af8b070b1";
+const PRIMARY_ASSIGNMENT = "f553569e-93eb-4aa4-ad75-ec26ac9cbe48"; // Chris, lead_photo, has email
 
 // Fake uuid that will never exist — used to probe the rate limit without
 // sending real email (handler will 404 after rate check passes).
@@ -134,14 +139,14 @@ async function main() {
 
   assert("POST /api/assignment-notify with invalid action → 400 invalid_action",
     await call("/api/assignment-notify", "POST", {
-      assignment_id: KATIE_ASSIGNMENT,
+      assignment_id: PRIMARY_ASSIGNMENT,
       action: "removed",
     }),
     expectStatusAndError(400, "invalid_action"));
 
   assert("POST /api/assignment-notify swapped without affected_ids → 400",
     await call("/api/assignment-notify", "POST", {
-      assignment_id: KATIE_ASSIGNMENT,
+      assignment_id: PRIMARY_ASSIGNMENT,
       action: "swapped",
     }),
     expectStatusAndError(400, "missing_affected_ids"));
@@ -153,7 +158,7 @@ async function main() {
   if (otherWedding.rows.length > 0) {
     assert("POST /api/assignment-notify swap with cross-wedding target → 400 invalid_swap_target",
       await call("/api/assignment-notify", "POST", {
-        assignment_id: KATIE_ASSIGNMENT,
+        assignment_id: PRIMARY_ASSIGNMENT,
         action: "swapped",
         affected_ids: [otherWedding.rows[0].id],
       }),
@@ -179,13 +184,12 @@ async function main() {
     expectStatus(400));
 
   // ── Phase 3: real email flow (assignment-notify role_change) ─────────
-  // This sends one real email to Katie. Allowed because the test is run
-  // intentionally and the inbox belongs to a real shooter.
+  // Sends one real email to chris@mytlic.com (the primary assignment).
   console.log("\nPhase 3: real email send (assignment-notify role_change)");
   clearRateLimitBucket();
   {
     const r = await call("/api/assignment-notify", "POST", {
-      assignment_id: KATIE_ASSIGNMENT,
+      assignment_id: PRIMARY_ASSIGNMENT,
       action: "role_change",
     });
     assert("POST /api/assignment-notify role_change → 200 sent:1",
