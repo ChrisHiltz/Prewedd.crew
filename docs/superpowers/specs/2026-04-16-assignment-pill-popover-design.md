@@ -248,7 +248,7 @@ interface AssignmentPillPopoverProps {
 The popover is a small state machine. States:
 
 - `"menu"` — primary view with role options + remove
-- `"conflict"` — second-screen resolution view; carries `{ targetRole, conflicts: ConflictRow[] }` where a `ConflictRow` mirrors the server's 409 response: `{ id, role, shooter_id, shooter_name, can_swap, other_roles }`. N>1 conflicts is rare but possible (admin previously used `add_to`); the popover renders each conflicting shooter as a sub-group. Swap button is only rendered if `can_swap` is true for that row.
+- `"conflict"` — second-screen resolution view; carries `{ targetRole, conflicts: ConflictRow[] }` where a `ConflictRow` mirrors the server's 409 response: `{ id, role, shooter_id, shooter_name, can_swap }`. N>1 conflicts is rare but possible (admin previously used `add_to`); the popover renders each conflicting shooter as a sub-group. Swap button is only rendered if `can_swap` is true for that row.
 - `"notify"` — prompt shown after a successful non-remove mutation; carries `{ newRole, action: "role_change" | "swapped", affectedIds?: string[], affectedShooterName?: string }`. The popover captures `newRole` into its own state on mutation success (NOT from the prop), so subsequent refetches don't flicker the header.
 - `"saving"` — transitional state during the PATCH / DELETE round-trip; keeps the current screen and disables action buttons (no spinner overlay; a subtle opacity on the clicked row).
 - `"flash"` — brief "Role updated" message (no action buttons) shown when notify is skipped (no-user-account case, or noop); auto-closes after 800ms.
@@ -317,11 +317,13 @@ The parent's `onViewProfile` handler orchestrates the close-then-open:
 
 ```tsx
 onViewProfile={(shooterId) => {
-  // Radix auto-closes the popover on trigger callback since we set
-  // open={false} via onOpenChange; parent then opens panel.
-  openShooterPanel(shooterId);  // from kanban
-  // OR:
-  openShooterFromCouple(shooterId);  // from CouplePanel (preserves couple context — see Wiring section)
+  // The popover has already called its internal setOpen(false) BEFORE
+  // invoking this callback (Radix does NOT auto-close on arbitrary button
+  // clicks inside PopoverContent — only on outside-click/escape). Parent
+  // just opens the panel.
+  openShooterPanel(shooterId);       // from kanban
+  // OR (from CouplePanel — preserves couple context, see Wiring):
+  // openShooterFromCouple(shooterId);
 }}
 ```
 
@@ -459,15 +461,16 @@ Already shipped in Steps 6–7. Shapes below verified against
 - **200 — swap:** `{ ok: true, action: "swapped", swapped_with_assignment_id: string, swapped_with_shooter_id: string }` — note `swapped_with_assignment_id`, NOT `swap_target_id`
 - **200 — remove_other:** `{ ok: true, action: "removed_other", removed_assignment_id: string }`
 - **200 — add_to:** `{ ok: true, action: "added_to" }`
-- **200 — noop:** `{ ok: true, action: "noop" }` (the new role already matches current — no prompt needed)
+- **200 — noop:** `{ ok: true, noop: true }` — note shape: NOT `{ action: "noop" }`. The new role already matched current, no DB write occurred, no prompt needed. Branch on `result.noop === true`.
 - **400:** `{ error: "shooter_lacks_role" | "invalid_action" | "missing_conflict_assignment_id" | "conflict_mismatch" }`
 - **403:** `{ error: "Forbidden" }`
-- **409 — conflict:** `{ error: "conflict", conflicts: Array<{ id, role, shooter_id, shooter_name, can_swap: boolean, other_roles: string[] }> }`
+- **409 — conflict:** `{ error: "conflict", conflicts: Array<{ id, role, shooter_id, shooter_name, can_swap: boolean }> }`
+- **409 — cannot_swap:** `{ error: "cannot_swap", message: string }` — race: client fetched data when swap was legal, but the other shooter's roles changed before the PATCH ran. Treat like conflict_row_stale (close, refetch, "situation changed" toast).
 - **409 — raced:** `{ error: "conflict_row_gone" | "conflict_row_stale" }` — conflict row moved between client fetch and click
 
-The popover must branch on `action` to decide whether to show the notify
-prompt (skip for `"noop"`) and whether to use `swapped_with_assignment_id`
-as the `affected_ids[0]` for the notify call.
+The popover must branch on `noop` (skip prompt entirely) vs `action`
+(decide notify copy and pull `swapped_with_assignment_id` for
+`affected_ids[0]`).
 
 The **`can_swap`** boolean on each conflict row is authoritative — the
 RPC already computed swap legality (migration line 95). The client's
@@ -518,7 +521,7 @@ The popover consumes exactly these. No new endpoints.
 | PATCH 400 `shooter_lacks_role` | Stay on `menu`, show inline red text under the clicked row: "This role is no longer valid for this shooter." |
 | PATCH 400 `missing_conflict_assignment_id` / `conflict_mismatch` | Close popover, fire `onSuccess` (refetch), toast "Data was stale — please try again." |
 | PATCH 409 `conflict` (client didn't flag it) | Transition `saving → conflict` using the server's `conflicts` array. |
-| PATCH 409 `conflict_row_gone` / `conflict_row_stale` | Close popover, fire `onSuccess` (refetch), toast "The situation changed — please try again." |
+| PATCH 409 `conflict_row_gone` / `conflict_row_stale` / `cannot_swap` | Close popover, fire `onSuccess` (refetch), toast "The situation changed — please try again." |
 | PATCH 403 | Close popover, toast "Session expired. Please reload." |
 | PATCH 500 / network fail | Stay on current screen, inline red "Could not save. Try again." |
 | DELETE failure (500) | Same inline red text on the Remove row. |
