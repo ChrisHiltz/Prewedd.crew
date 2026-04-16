@@ -6,6 +6,7 @@ import { LinkIcon, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { RoleIcon } from "@/components/ui/role-icon";
 import { ROLE_SHORT_LABELS } from "@/lib/utils/roles";
+import { AssignmentPillPopover } from "./AssignmentPillPopover";
 import {
   getNeededRoles,
   getUnfilledRoles,
@@ -19,6 +20,8 @@ export interface WeddingCardAssignment extends AssignmentForScheduling {
   id: string;
   shooter_id: string;
   shooter_name: string;
+  shooter_roles: string[];       // all roles the shooter holds — feeds the popover's "Change role to" list
+  shooter_has_user: boolean;     // shooter_profiles.user_id != null; gates the notify prompt
 }
 
 export interface WeddingCardData extends WeddingForScheduling {
@@ -41,6 +44,7 @@ interface WeddingCardProps {
   onAssignClick: (weddingId: string, role: string) => void;
   onShooterClick?: (shooterId: string) => void;
   onCoupleClick?: (coupleId: string) => void;
+  onAssignmentsChanged?: () => void;
 }
 
 const STATUS_STYLES: Record<StaffingStatus, { border: string; dot: string; label: string }> = {
@@ -50,7 +54,7 @@ const STATUS_STYLES: Record<StaffingStatus, { border: string; dot: string; label
   confirmed: { border: "border-success/60", dot: "bg-success", label: "Confirmed" },
 };
 
-export function WeddingCard({ wedding, onAssignClick, onShooterClick, onCoupleClick }: WeddingCardProps) {
+export function WeddingCard({ wedding, onAssignClick, onShooterClick, onCoupleClick, onAssignmentsChanged }: WeddingCardProps) {
   const [expanded, setExpanded] = useState(false);
   const status = getStaffingStatus(wedding, wedding.assignments);
   const styles = STATUS_STYLES[status];
@@ -100,25 +104,50 @@ export function WeddingCard({ wedding, onAssignClick, onShooterClick, onCoupleCl
         )}
       </div>
 
-      {/* Assigned shooters as pills */}
+      {/* Assigned shooters as pills — each pill opens AssignmentPillPopover.
+          The pill button keeps e.stopPropagation() so the card doesn't
+          expand/collapse when a pill is clicked (base-ui Trigger composes
+          onClick with our handler; stopPropagation still runs). */}
       {wedding.assignments.length > 0 && (
         <div className="mt-2 flex flex-wrap gap-1">
-          {wedding.assignments.map((a) => (
-            <button
-              key={a.id}
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onShooterClick?.(a.shooter_id);
-              }}
-              className="inline-flex items-center gap-1 rounded-full border border-border bg-muted px-1.5 py-0.5 hover:border-primary hover:bg-primary/5 transition-colors"
-            >
-              <RoleIcon role={a.role} size="xs" />
-              <span className="text-[9px] font-medium text-foreground">
-                {a.shooter_name.split(" ")[0]}
-              </span>
-            </button>
-          ))}
+          {wedding.assignments.map((a) => {
+            const popoverAssignment = {
+              id: a.id,
+              role: a.role,
+              shooter_id: a.shooter_id,
+              shooter_name: a.shooter_name,
+              shooter_roles: a.shooter_roles,
+              shooter_has_user: a.shooter_has_user,
+            };
+            const popoverWeddingAssignments = wedding.assignments.map((x) => ({
+              id: x.id,
+              role: x.role,
+              shooter_id: x.shooter_id,
+              shooter_name: x.shooter_name,
+              shooter_roles: x.shooter_roles,
+              shooter_has_user: x.shooter_has_user,
+            }));
+            return (
+              <AssignmentPillPopover
+                key={a.id}
+                assignment={popoverAssignment}
+                weddingAssignments={popoverWeddingAssignments}
+                onViewProfile={(shooterId) => onShooterClick?.(shooterId)}
+                onAssignmentsChanged={() => onAssignmentsChanged?.()}
+              >
+                <button
+                  type="button"
+                  onClick={(e) => e.stopPropagation()}
+                  className="inline-flex items-center gap-1 rounded-full border border-border bg-muted px-1.5 py-0.5 hover:border-primary hover:bg-primary/5 transition-colors"
+                >
+                  <RoleIcon role={a.role} size="xs" />
+                  <span className="text-[9px] font-medium text-foreground">
+                    {a.shooter_name.split(" ")[0]}
+                  </span>
+                </button>
+              </AssignmentPillPopover>
+            );
+          })}
         </div>
       )}
 

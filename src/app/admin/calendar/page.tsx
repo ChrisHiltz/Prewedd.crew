@@ -31,6 +31,8 @@ interface RawKanbanAssignment {
     id: string;
     name: string;
     headshot_url: string | null;
+    user_id: string | null;
+    roles: string[] | null;
   } | null;
 }
 
@@ -141,7 +143,7 @@ export default function AdminCalendarPage() {
         timeline_internal_url,
         timeline_couple_url,
         couples(names),
-        assignments(id, shooter_id, role, status, brief_read, quiz_passed, shooter_profiles(id, name, headshot_url))
+        assignments(id, shooter_id, role, status, brief_read, quiz_passed, shooter_profiles(id, name, headshot_url, user_id, roles))
       `)
       .gte("date", todayStr)
       .order("date");
@@ -152,6 +154,8 @@ export default function AdminCalendarPage() {
           id: a.id,
           shooter_id: a.shooter_id,
           shooter_name: a.shooter_profiles?.name ?? "Unknown",
+          shooter_roles: a.shooter_profiles?.roles ?? [],
+          shooter_has_user: a.shooter_profiles?.user_id != null,
           role: a.role,
           status: a.status,
           brief_read: a.brief_read ?? false,
@@ -277,6 +281,15 @@ export default function AdminCalendarPage() {
     if (view === "grid") loadGridData();
   }
 
+  /** Cross-surface refresh triggered by any popover mutation (role change,
+   *  swap, remove). Fans out to kanban + grid refetchers (grid is a no-op
+   *  when the view isn't mounted). CouplePanel refetches itself internally
+   *  before calling this up-chain. */
+  function refreshAllAssignments() {
+    loadKanbanData();
+    if (view === "grid") loadGridData();
+  }
+
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
@@ -366,7 +379,13 @@ export default function AdminCalendarPage() {
         kanbanLoading ? (
           <p className="py-8 text-center text-sm text-muted-foreground">Loading…</p>
         ) : (
-          <KanbanView weddings={kanbanWeddings} onAssignClick={handleAssignClick} onShooterClick={openShooterPanel} onCoupleClick={openCouplePanel} />
+          <KanbanView
+            weddings={kanbanWeddings}
+            onAssignClick={handleAssignClick}
+            onShooterClick={openShooterPanel}
+            onCoupleClick={openCouplePanel}
+            onAssignmentsChanged={refreshAllAssignments}
+          />
         )
       ) : gridLoading ? (
         <p className="py-8 text-center text-sm text-muted-foreground">Loading…</p>

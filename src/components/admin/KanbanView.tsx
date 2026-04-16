@@ -10,6 +10,7 @@ interface KanbanViewProps {
   onAssignClick: (weddingId: string, role: string) => void;
   onShooterClick?: (shooterId: string) => void;
   onCoupleClick?: (coupleId: string) => void;
+  onAssignmentsChanged?: () => void;
 }
 
 function formatMonthLabel(dateStr: string): string {
@@ -33,7 +34,7 @@ function getMonthKey(dateStr: string): string {
   return dateStr.slice(0, 7); // "YYYY-MM"
 }
 
-export function KanbanView({ weddings, onAssignClick, onShooterClick, onCoupleClick }: KanbanViewProps) {
+export function KanbanView({ weddings, onAssignClick, onShooterClick, onCoupleClick, onAssignmentsChanged }: KanbanViewProps) {
   // Group weddings by month, then by date within each month
   const months = useMemo(() => {
     const monthMap = new Map<string, Map<string, WeddingCardData[]>>();
@@ -131,6 +132,7 @@ export function KanbanView({ weddings, onAssignClick, onShooterClick, onCoupleCl
                           onAssignClick={onAssignClick}
                           onShooterClick={onShooterClick}
                           onCoupleClick={onCoupleClick}
+                          onAssignmentsChanged={onAssignmentsChanged}
                         />
                       ))}
                     </div>

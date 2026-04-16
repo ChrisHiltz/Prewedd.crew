@@ -669,9 +669,12 @@ export function AssignmentPillPopover({
 
   return (
     <Popover open={open} onOpenChange={handleOpenChange}>
-      {/* base-ui Trigger auto-toggles open. We pass our trigger element via
-          `render` (base-ui's equivalent of Radix `asChild`). */}
-      <PopoverTrigger render={<span>{children}</span>} />
+      {/* base-ui Trigger auto-toggles open. We pass the caller's trigger
+          element via `render` (base-ui's equivalent of Radix `asChild`).
+          Callers MUST provide a single element (typically a <button>) and
+          MUST preserve any existing onClick logic (e.g. stopPropagation
+          to keep parent click handlers like card-expand from firing). */}
+      <PopoverTrigger render={children as React.ReactElement} />
       <PopoverContent
         className="z-[70] w-[260px] p-0"
         align="start"
