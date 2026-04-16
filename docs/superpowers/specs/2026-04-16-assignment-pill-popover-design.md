@@ -122,19 +122,30 @@ this time to a compact "Notify?" prompt:
 
 **"Yes, notify"** fires `POST /api/assignment-notify` with the appropriate
 body (`{ assignment_id, action: "role_change" }` or `{ assignment_id,
-action: "swapped", affected_ids: [<other>] }`), then closes.
+action: "swapped", affected_ids: [<other_assignment_id>] }`), then closes.
+
+For a swap resolution, the `<other_assignment_id>` must be pulled from the
+PATCH response (field: `swapped_with_assignment_id`, NOT `swap_target_id`
+— the latter name does not exist in the route).
+
+**Copy for swap resolution:** The prompt copy changes from "Notify Katie
+by email?" to "Notify Katie and Sarah by email?" because the notify
+endpoint sends to **both** shooters on `action: "swapped"`. The popover
+has both names in its props (`assignment.shooter_name` and the conflict
+row's `shooter_name`), so template them in.
 
 **"No, thanks"** (or clicking outside) just closes.
 
-**Skip-the-prompt rule.** If the shooter has no linked user account (their
-`shooter_profiles.user_id` is null, meaning they're rostered but not yet
-invited), the notify prompt is not shown — the popover simply flashes
-"Role updated" for ~800ms and closes. Sending email to someone who hasn't
-been onboarded would 404 at the API anyway; skipping the prompt avoids a
-dead-end button.
+**Skip-the-prompt rule.** If the shooter has no linked user account
+(`shooter_profiles.user_id IS NULL` — verified in production that this
+column was relaxed to nullable in a post-initial-schema migration, and
+roster-only shooters like "Katie Koutsouradis" actually have NULL), the
+notify prompt is not shown — the popover flashes "Role updated" for ~800ms
+and closes. Sending to a shooter with no user row would 404 at the API
+(`assignment-notify` returns `assignment_not_found_or_no_email`).
 
-This is detected from `shooter_profiles.user_id` which Step 9 also adds
-to the kanban query alongside `roles`.
+For swap, the prompt is also skipped if EITHER shooter has no linked user
+(we don't want to partially notify).
 
 ### Notify-failure handling
 
@@ -146,11 +157,23 @@ No retry affordance in the UI (admin can manually email).
 
 ### Remove flow
 
-Clicking **"Remove from wedding"** calls `DELETE /api/assign?id=<assignment_id>`
-directly — no confirmation modal, no notify prompt. The rationale is
-documented in Step 7's route: removes at this stage happen either because
-the shooter never received the initial assignment email or because they
-verbally declined. There is no one to notify.
+Clicking **"Remove from wedding"** calls `DELETE /api/assign` with a
+JSON body:
+
+```ts
+fetch("/api/assign", {
+  method: "DELETE",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ assignment_id: assignment.id }),
+});
+```
+
+The route expects the id in the body, not the query string, and returns
+`200 { ok: true }` on success (not 204). No confirmation modal, no notify
+prompt. The rationale is documented in Step 7's route: removes at this
+stage happen either because the shooter never received the initial
+assignment email or because they verbally declined. There is no one to
+notify.
 
 If the delete fails, the popover stays open and shows the error inline
 ("Could not remove. Try again?"). If it succeeds, the popover closes and
@@ -162,7 +185,30 @@ the parent refetches.
 
 **New file:** `src/components/admin/AssignmentPillPopover.tsx`
 
-### Props
+### Props and API surface
+
+The popover follows shadcn/Radix's idiomatic "wrap the trigger" pattern
+rather than an external `anchorEl`. The parent composes:
+
+```tsx
+<AssignmentPillPopover
+  assignment={...}
+  weddingAssignments={...}
+  onViewProfile={...}
+  onSuccess={...}
+>
+  <button className="pill-styles">
+    <RoleIcon role={a.role} /> {a.shooter_name.split(" ")[0]}
+  </button>
+</AssignmentPillPopover>
+```
+
+The child becomes the `PopoverTrigger asChild`. Radix handles anchoring,
+focus return to the trigger on close, reposition-on-scroll, and focus
+trap — no hand-rolled DOM refs, no stale `anchorEl` issues across
+re-renders. `onClose` is not needed as a prop: Radix's `Popover`
+component owns its open state internally, and we hand it the
+`onOpenChange` via `useState` inside the popover component.
 
 ```ts
 interface AssignmentPillPopoverProps {
@@ -173,7 +219,7 @@ interface AssignmentPillPopoverProps {
     shooter_id: string;
     shooter_name: string;
     shooter_roles: string[];        // all roles this shooter holds — from shooter_profiles.roles
-    shooter_has_user: boolean;      // derived from shooter_profiles.user_id !== null
+    shooter_has_user: boolean;      // shooter_profiles.user_id !== null (verified column IS nullable in prod)
   };
 
   /** All assignments on this wedding, for client-side conflict detection. */
@@ -182,20 +228,18 @@ interface AssignmentPillPopoverProps {
     role: string;
     shooter_id: string;
     shooter_name: string;
-    shooter_roles: string[];        // needed so the swap-legality check can verify the OTHER shooter holds the old role
+    shooter_roles: string[];        // the swap-legality check needs this
+    shooter_has_user: boolean;      // required too — for the "skip notify on swap if either shooter has no user" rule
   }>;
 
-  /** The anchor element (the clicked pill). Popover positions against this. */
-  anchorEl: HTMLElement;
-
-  /** Fired when "View profile" is clicked. Parent is responsible for closing the popover BEFORE opening ShooterPanel (z-index order). */
+  /** Fired when "View profile" is clicked. Parent closes popover (Radix does this automatically on this callback by setting open=false) BEFORE opening ShooterPanel (z-index order). */
   onViewProfile: (shooterId: string) => void;
 
-  /** Fired after any successful mutation (role change, swap, remove). Parent uses this to refetch its data. */
+  /** Fired immediately on successful mutation commit, BEFORE the notify prompt renders. Parent uses this to refetch its data. Rationale: the kanban card shows stale data for the entire time the admin is deciding "Notify?" if onSuccess fires on close — worse than a minor popover flicker. The popover holds its own copy of the new role in state so header copy is stable regardless of refetch timing. */
   onSuccess: () => void;
 
-  /** Close handler — user dismissed via Escape, outside click, or after a terminal state. */
-  onClose: () => void;
+  /** Trigger markup — becomes `PopoverTrigger asChild` content. */
+  children: React.ReactNode;
 }
 ```
 
@@ -204,23 +248,29 @@ interface AssignmentPillPopoverProps {
 The popover is a small state machine. States:
 
 - `"menu"` — primary view with role options + remove
-- `"conflict"` — second-screen resolution view; carries `{ targetRole, conflictAssignmentId }`
-- `"notify"` — prompt shown after a successful non-remove mutation; carries `{ newAssignmentId, action, affectedIds }`
-- `"saving"` — transitional state during the PATCH / DELETE round-trip; shows a subtle inline spinner but keeps the current screen
-- `"flash"` — brief "Role updated" message shown when notify is skipped (no-user-account case); auto-closes after 800ms
+- `"conflict"` — second-screen resolution view; carries `{ targetRole, conflicts: ConflictRow[] }` where a `ConflictRow` mirrors the server's 409 response: `{ id, role, shooter_id, shooter_name, can_swap, other_roles }`. N>1 conflicts is rare but possible (admin previously used `add_to`); the popover renders each conflicting shooter as a sub-group. Swap button is only rendered if `can_swap` is true for that row.
+- `"notify"` — prompt shown after a successful non-remove mutation; carries `{ newRole, action: "role_change" | "swapped", affectedIds?: string[], affectedShooterName?: string }`. The popover captures `newRole` into its own state on mutation success (NOT from the prop), so subsequent refetches don't flicker the header.
+- `"saving"` — transitional state during the PATCH / DELETE round-trip; keeps the current screen and disables action buttons (no spinner overlay; a subtle opacity on the clicked row).
+- `"flash"` — brief "Role updated" message (no action buttons) shown when notify is skipped (no-user-account case, or noop); auto-closes after 800ms.
 
 State transitions:
 
 ```
-menu → conflict (click conflicted role)
-menu → saving → notify (click non-conflicted role, shooter has email)
-menu → saving → flash → closed (click non-conflicted role, no email)
+menu → conflict (click conflicted role; set conflicts from client detection)
+menu → saving → notify (click non-conflicted role, shooter has email, action != noop)
+menu → saving → flash → closed (click non-conflicted role, no email, OR action == noop)
 menu → saving → closed (click Remove, success)
-conflict → saving → notify (click a resolution option, shooter has email)
-conflict → saving → flash → closed (same, no email)
+conflict → saving → notify (click a resolution option, both shooters have email)
+conflict → saving → flash → closed (same, at least one shooter has no user)
 conflict → menu (click back)
 notify → closed (click either button)
 ```
+
+**If the client thought there was no conflict but the server returned 409 conflict** (stale data between fetch and click), transition `saving → conflict` using the server's `conflicts` array. The popover re-asks the admin.
+
+**If the server returns `conflict_row_gone` or `conflict_row_stale`** (a 409 variant where the conflict row moved out from under us between the client's initial fetch and this PATCH), close the popover entirely, fire `onSuccess` (which triggers refetch), and emit a toast: "The situation changed — please try again." No conflict screen.
+
+**Edge case — shooter holds exactly one role.** The candidate-roles list (all roles minus current) is empty. The "CHANGE ROLE TO" section header and list are both hidden. Menu shows just View Profile + Remove.
 
 ### Positioning
 
@@ -243,17 +293,37 @@ brittle. Radix is the right call.
 
 ### Z-index — popover above, ShooterPanel above popover
 
-Current stack: Sheet `z-50`, CouplePanel `z-55`, ShooterPanel `z-60`.
-The popover renders at `z-70` (above every panel). This means:
+Current stack (verified):
+- Sheet overlay + content: `z-50`
+- CouplePanel: `z-[55]`
+- ShooterPanel: `z-[60]`
 
-- Opening from kanban: popover sits above the card and any open panels
-- Opening from CouplePanel: popover sits above CouplePanel
-- Clicking "View profile": popover must close BEFORE ShooterPanel opens,
-  otherwise a popover at `z-70` obscures ShooterPanel at `z-60`
+**shadcn/Radix gotcha:** shadcn's default `PopoverContent` ships with
+`z-50` — BELOW both panels. Radix portals the content to `document.body`
+so it escapes CouplePanel's stacking context, and competes on the root
+stack. If we leave the default, a popover opened inside CouplePanel will
+render BEHIND CouplePanel.
 
-The parent enforces the close-first-then-open order in its `onViewProfile`
-handler. The popover itself just calls `onViewProfile(shooterId)` and
-lets the parent orchestrate.
+**Fix:** Pass `className="z-[70]"` to `PopoverContent` (either on every
+usage, or — cleaner — modify `src/components/ui/popover.tsx` to default
+to `z-[70]`). The popover now sits above every panel.
+
+- Opening from kanban: popover above the card, no panels in the way
+- Opening from CouplePanel: popover (z-70) above CouplePanel (z-55)
+- Clicking "View profile": popover closes BEFORE ShooterPanel opens,
+  otherwise a popover at z-70 obscures ShooterPanel at z-60
+
+The parent's `onViewProfile` handler orchestrates the close-then-open:
+
+```tsx
+onViewProfile={(shooterId) => {
+  // Radix auto-closes the popover on trigger callback since we set
+  // open={false} via onOpenChange; parent then opens panel.
+  openShooterPanel(shooterId);  // from kanban
+  // OR:
+  openShooterFromCouple(shooterId);  // from CouplePanel (preserves couple context — see Wiring section)
+}}
+```
 
 ### Sizing
 
@@ -318,49 +388,124 @@ I'll verify this shape when implementing and adjust.
 
 ### CouplePanel refresh — explicit `refetch()` callback
 
-CouplePanel's current effect:
+CouplePanel's current effect uses a `let cancelled = false` closure for
+stale-response handling. A naive extraction into a named `refetchCouple`
+would lose that guard — two concurrent invocations (e.g., coupleId switch
+mid-flight while a popover also fires onSuccess) could interleave their
+setState calls.
 
-```ts
-useEffect(() => {
-  if (!coupleId) return;
-  // ...fetch couple + weddings + assignments
-}, [coupleId]);
-```
+**Correct refactor:**
 
-Extract the fetch body into a named function (e.g., `refetchCouple`).
-Pass `refetchCouple` down to each popover via its `onSuccess` prop:
+1. Move the fetch body into a `useCallback(refetchCouple, [coupleId])`.
+2. Use a monotonic request-id ref (`const requestIdRef = useRef(0)`) to
+   guard stale responses: increment on each call, capture the local id,
+   and `if (requestIdRef.current !== myId) return` before each setState.
+3. Optionally use AbortController via Supabase's `.abortSignal(signal)` —
+   cleaner cancellation but more setup. The request-id pattern is
+   sufficient here.
+4. The `useEffect` on `[coupleId]` simply calls `refetchCouple()`.
+
+Then pass `refetchCouple` to each popover's `onSuccess`:
 
 ```tsx
 <AssignmentPillPopover
   assignment={...}
   weddingAssignments={...}
-  anchorEl={...}
-  onViewProfile={(id) => { closePopover(); openShooterPanel(id); }}
-  onSuccess={refetchCouple}
-  onClose={closePopover}
-/>
+  onViewProfile={openShooterFromCouple}  // preserves couple context — NOT openShooterPanel
+  onSuccess={handleCouplePopoverSuccess}  // calls both refetchCouple AND onKanbanRefetch
+>
+  <button>...pill markup...</button>
+</AssignmentPillPopover>
 ```
 
-The popover doesn't need to know it's inside CouplePanel — same callback
-contract as the kanban caller. The kanban's `onSuccess` is just the
-kanban's own refetch function.
+**Cross-surface refresh.** A mutation triggered from CouplePanel also
+changes data the kanban renders (the underlying `kanbanWeddings` array).
+CouplePanel must fire BOTH its own `refetchCouple` AND the parent page's
+`loadKanbanData` — otherwise closing CouplePanel returns to a stale card.
+CouplePanel accepts a new prop `onKanbanRefetch?: () => void` wired from
+the page; the popover's `onSuccess` handler inside CouplePanel calls:
+
+```ts
+const handleCouplePopoverSuccess = () => {
+  refetchCouple();
+  onKanbanRefetch?.();
+};
+```
+
+The popover doesn't know it's inside CouplePanel — same callback contract
+either way. The kanban's `onSuccess` just calls `loadKanbanData` directly.
 
 ---
 
 ## API surface (reference — no changes needed)
 
-Already shipped in Steps 6–7:
+Already shipped in Steps 6–7. Shapes below verified against
+`src/app/api/assign/route.ts` and `src/app/api/assignment-notify/route.ts`:
 
-- `PATCH /api/assign` — body: `{ assignment_id, new_role, conflict_action?, conflict_assignment_id? }`
-  - 200: `{ ok: true, swap_target_id?: string }`
-  - 400: `{ error: "shooter_lacks_role" | "invalid_action" | ... }`
-  - 403: `{ error: "Forbidden" }`
-  - 409: `{ error: "conflict", conflicts: Array<{ id, role, shooter_id, shooter_name }> }`
-- `DELETE /api/assign?id=<uuid>` — 204 on success; 403 / 404 otherwise.
-- `POST /api/assignment-notify` — body: `{ assignment_id, action: "role_change" | "swapped", affected_ids?: string[] }`
-  - 200: `{ ok: true, sent: number, failed: number }`
-  - 429: `{ error: "rate_limited", retry_after_seconds: number }` — UI falls through to "notification failed" toast
-  - 500: same toast
+### `PATCH /api/assign`
+
+**Request body:**
+```ts
+{
+  assignment_id: string,
+  new_role: string,
+  conflict_action?: "swap" | "remove_other" | "add_to",
+  conflict_assignment_id?: string,  // required if conflict_action is set
+}
+```
+
+**Responses** (the route returns the RPC result verbatim on success):
+- **200 — role change:** `{ ok: true, action: "updated" }`
+- **200 — swap:** `{ ok: true, action: "swapped", swapped_with_assignment_id: string, swapped_with_shooter_id: string }` — note `swapped_with_assignment_id`, NOT `swap_target_id`
+- **200 — remove_other:** `{ ok: true, action: "removed_other", removed_assignment_id: string }`
+- **200 — add_to:** `{ ok: true, action: "added_to" }`
+- **200 — noop:** `{ ok: true, action: "noop" }` (the new role already matches current — no prompt needed)
+- **400:** `{ error: "shooter_lacks_role" | "invalid_action" | "missing_conflict_assignment_id" | "conflict_mismatch" }`
+- **403:** `{ error: "Forbidden" }`
+- **409 — conflict:** `{ error: "conflict", conflicts: Array<{ id, role, shooter_id, shooter_name, can_swap: boolean, other_roles: string[] }> }`
+- **409 — raced:** `{ error: "conflict_row_gone" | "conflict_row_stale" }` — conflict row moved between client fetch and click
+
+The popover must branch on `action` to decide whether to show the notify
+prompt (skip for `"noop"`) and whether to use `swapped_with_assignment_id`
+as the `affected_ids[0]` for the notify call.
+
+The **`can_swap`** boolean on each conflict row is authoritative — the
+RPC already computed swap legality (migration line 95). The client's
+own legality check is just for rendering the conflict screen before the
+server round-trip; if `can_swap` comes back false from the RPC but the
+client thought it was legal, defer to the server.
+
+### `DELETE /api/assign`
+
+**Request body** (JSON, NOT query string):
+```ts
+{ assignment_id: string }
+```
+
+**Responses:**
+- **200:** `{ ok: true }` (NOT 204)
+- **400:** `{ error: "Missing assignment_id" | "Invalid JSON" }`
+- **403:** `{ error: "Forbidden" }`
+- **500:** `{ error: "<db error message>" }`
+
+### `POST /api/assignment-notify`
+
+**Request body:**
+```ts
+{
+  assignment_id: string,
+  action: "role_change" | "swapped",
+  affected_ids?: string[],  // required for action: "swapped"; first element is the OTHER assignment's id
+}
+```
+
+**Responses:**
+- **200:** `{ ok: true, sent: number, failed: number, failed_recipients: string[] }`
+- **400:** `{ error: "invalid_action" | "missing_affected_ids" | "invalid_swap_target" | "Missing assignment_id or action" }`
+- **403:** `{ error: "Forbidden" }`
+- **404:** `{ error: "assignment_not_found_or_no_email" }` — the fallback target for the no-user-account case, though the popover preempts this via the skip rule
+- **429:** `{ error: "rate_limited", retry_after_seconds: number }` — UI falls through to "notification failed" toast
+- **500:** `{ ok: false, sent: 0, failed: 2, failed_recipients: [...] }` — Resend send(s) all failed
 
 The popover consumes exactly these. No new endpoints.
 
@@ -371,11 +516,15 @@ The popover consumes exactly these. No new endpoints.
 | Failure | UI response |
 |---|---|
 | PATCH 400 `shooter_lacks_role` | Stay on `menu`, show inline red text under the clicked row: "This role is no longer valid for this shooter." |
-| PATCH 409 (conflict detected server-side but client didn't flag it) | Swap to `conflict` state using the server's returned conflict list. |
+| PATCH 400 `missing_conflict_assignment_id` / `conflict_mismatch` | Close popover, fire `onSuccess` (refetch), toast "Data was stale — please try again." |
+| PATCH 409 `conflict` (client didn't flag it) | Transition `saving → conflict` using the server's `conflicts` array. |
+| PATCH 409 `conflict_row_gone` / `conflict_row_stale` | Close popover, fire `onSuccess` (refetch), toast "The situation changed — please try again." |
 | PATCH 403 | Close popover, toast "Session expired. Please reload." |
 | PATCH 500 / network fail | Stay on current screen, inline red "Could not save. Try again." |
-| DELETE failure | Same inline red text on the Remove row. |
-| Notify endpoint failure (after successful mutation) | Popover closes, refetch fires, toast: "Role updated, but email notification failed." |
+| DELETE failure (500) | Same inline red text on the Remove row. |
+| DELETE 403 | Close popover, toast "Session expired. Please reload." |
+| Notify 429 rate-limited | Popover closes, refetch fires, toast: "Role updated. Too many emails this minute — notification skipped." |
+| Notify 500 / failed_recipients | Popover closes, refetch fires, toast: "Role updated, but email notification failed." |
 
 No retries from the popover. Admins can re-open and re-act.
 
