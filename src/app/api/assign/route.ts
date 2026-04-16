@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { Resend } from "resend";
 import { buildAssignmentEmail } from "@/lib/utils/notifications";
 import { isCrewRole } from "@/lib/utils/roles";
+import { requireAdmin } from "@/lib/supabase/admin-auth";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -24,24 +25,6 @@ type Body = SingleAssignBody | BatchAssignBody;
 
 function isBatch(body: Body): body is BatchAssignBody {
   return "assignments" in body && Array.isArray((body as BatchAssignBody).assignments);
-}
-
-// ─── Auth helper ──────────────────────────────────────────────────────────────
-
-async function requireAdmin(supabase: Awaited<ReturnType<typeof createClient>>) {
-  const {
-    data: { user: authUser },
-    error: authError,
-  } = await supabase.auth.getUser();
-  if (authError || !authUser) return null;
-
-  const { data: dbUser } = await supabase
-    .from("users")
-    .select("role")
-    .eq("id", authUser.id)
-    .single();
-
-  return dbUser?.role === "admin" ? authUser.id : null;
 }
 
 // ─── Email sender (best-effort, called after successful DB commit) ─────────────
