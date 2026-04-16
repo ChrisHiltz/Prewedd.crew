@@ -11,6 +11,7 @@ import {
   LogOut,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Toaster } from "@/components/ui/sonner";
 
 const navItems = [
   { href: "/admin/roster", label: "Roster", icon: Users },
@@ -78,6 +79,10 @@ export default function AdminLayout({
       {/* Main content — h-screen + overflow-y-auto makes this the scroll container,
            so sticky headers inside children work correctly */}
       <main className="ml-56 min-w-0 h-screen overflow-y-auto">{children}</main>
+
+      {/* Global toast surface — sonner. Rendered here so admins see toasts on
+          every admin route (mutations in kanban, CouplePanel, etc.). */}
+      <Toaster richColors closeButton position="bottom-right" />
     </div>
   );
 }
