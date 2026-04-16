@@ -211,6 +211,17 @@ export function AssignmentPillPopover({
       });
       return;
     }
+    // Pre-RPC "Invalid role: <name>" message from the route itself (not the
+    // RPC). Shouldn't happen from the popover in practice because we only
+    // offer roles from the shooter's profile, but covers the case where
+    // the project's crew-role enum drifts from stored shooter roles.
+    if (res.status === 400 && errCode.startsWith("Invalid role:")) {
+      setState({
+        kind: "error",
+        message: "That role isn't recognized. Reload and try again.",
+      });
+      return;
+    }
     if (
       res.status === 400 &&
       (errCode === "missing_conflict_assignment_id" ||
