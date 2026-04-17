@@ -80,6 +80,11 @@ interface CouplePanelProps {
   onShooterClick?: (shooterId: string) => void;
   onAssignClick?: (weddingId: string, role: string) => void;
   onAssignmentsChanged?: () => void;
+  /** Bump this counter to trigger a CouplePanel refetch from outside
+   *  (e.g. after AssignSlideOut assigns a shooter). CouplePanel watches
+   *  this alongside coupleId so it refetches even when coupleId hasn't
+   *  changed. */
+  refreshKey?: number;
 }
 
 // ─── Editable field ──────────────────────────────────────────────────────────
@@ -196,7 +201,7 @@ function Section({ title, defaultOpen = true, count, children }: { title: string
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
-export function CouplePanel({ coupleId, onClose, onShooterClick, onAssignClick, onAssignmentsChanged }: CouplePanelProps) {
+export function CouplePanel({ coupleId, onClose, onShooterClick, onAssignClick, onAssignmentsChanged, refreshKey }: CouplePanelProps) {
   const [couple, setCouple] = useState<CoupleData | null>(null);
   const [wedding, setWedding] = useState<FullWedding | null>(null);
   const [loading, setLoading] = useState(false);
@@ -236,7 +241,7 @@ export function CouplePanel({ coupleId, onClose, onShooterClick, onAssignClick, 
 
   useEffect(() => {
     refetchCouple();
-  }, [refetchCouple]);
+  }, [refetchCouple, refreshKey]);
 
   // ── Save helpers ──────────────────────────────────────────────────────────
 

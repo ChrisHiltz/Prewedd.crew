@@ -91,6 +91,7 @@ export default function AdminCalendarPage() {
 
   // ── Couple panel state ──────────────────────────────────────────────────────
   const [activeCoupleId, setActiveCoupleId] = useState<string | null>(null);
+  const [couplePanelRefreshKey, setCouplePanelRefreshKey] = useState(0);
 
   function openShooterPanel(id: string) {
     setActiveShooterId(id);
@@ -280,9 +281,10 @@ export default function AdminCalendarPage() {
   }
 
   function handleAssigned() {
-    // Refresh kanban data after a successful assignment
+    // Refresh kanban + grid + CouplePanel after a successful assignment
     loadKanbanData();
     if (view === "grid") loadGridData();
+    setCouplePanelRefreshKey((k) => k + 1);
   }
 
   /** Cross-surface refresh triggered by any popover mutation (role change,
@@ -434,6 +436,7 @@ export default function AdminCalendarPage() {
         onShooterClick={openShooterFromCouple}
         onAssignClick={handleAssignClick}
         onAssignmentsChanged={refreshAllAssignments}
+        refreshKey={couplePanelRefreshKey}
       />
 
       {/* Shooter info panel — z-[60], rendered after CouplePanel so it
