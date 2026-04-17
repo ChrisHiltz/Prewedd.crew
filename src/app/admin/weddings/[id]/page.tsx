@@ -368,36 +368,39 @@ export default function WeddingDetailPage({
 
           {/* Staffing */}
           <CollapsibleSection title={`Staffing — ${assignments.length} assigned`} id="wedding-staffing" defaultOpen>
-            <div className="mb-3 grid grid-cols-3 gap-3">
-              <div className="rounded-lg border border-border bg-card p-3 text-center">
-                <Camera className="mx-auto mb-1 size-4 text-primary" />
+            {/* Team size — compact inline row */}
+            <div className="mb-3 flex items-center gap-4 text-sm">
+              <div className="flex items-center gap-1.5">
+                <Camera className="size-3.5 text-primary" />
                 <EditableCell
                   value={String(wedding.num_photographers)}
                   onChange={(v) => updateWedding("num_photographers", Math.max(0, parseInt(v, 10) || 0))}
                   placeholder="0"
-                  displayClassName="text-lg font-semibold text-foreground"
+                  displayClassName="text-sm font-bold text-foreground"
                 />
-                <p className="text-[10px] text-muted-foreground">Photographers</p>
+                <span className="text-xs text-muted-foreground">Photo</span>
               </div>
-              <div className="rounded-lg border border-border bg-card p-3 text-center">
-                <Video className="mx-auto mb-1 size-4 text-accent" />
+              <span className="text-muted-foreground/40">·</span>
+              <div className="flex items-center gap-1.5">
+                <Video className="size-3.5 text-muted-foreground" />
                 <EditableCell
                   value={String(wedding.num_videographers)}
                   onChange={(v) => updateWedding("num_videographers", Math.max(0, parseInt(v, 10) || 0))}
                   placeholder="0"
-                  displayClassName="text-lg font-semibold text-foreground"
+                  displayClassName="text-sm font-bold text-foreground"
                 />
-                <p className="text-[10px] text-muted-foreground">Videographers</p>
+                <span className="text-xs text-muted-foreground">Video</span>
               </div>
-              <div className="rounded-lg border border-border bg-card p-3 text-center">
-                <Users className="mx-auto mb-1 size-4 text-muted-foreground" />
+              <span className="text-muted-foreground/40">·</span>
+              <div className="flex items-center gap-1.5">
+                <Users className="size-3.5 text-muted-foreground" />
                 <EditableCell
                   value={String(wedding.num_assistants)}
                   onChange={(v) => updateWedding("num_assistants", Math.max(0, parseInt(v, 10) || 0))}
                   placeholder="0"
-                  displayClassName="text-lg font-semibold text-foreground"
+                  displayClassName="text-sm font-bold text-foreground"
                 />
-                <p className="text-[10px] text-muted-foreground">Assistants</p>
+                <span className="text-xs text-muted-foreground">Assist</span>
               </div>
             </div>
             {/* Team list — each row opens AssignmentPillPopover (same as kanban + CouplePanel) */}
