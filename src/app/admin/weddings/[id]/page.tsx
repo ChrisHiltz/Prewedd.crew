@@ -229,7 +229,7 @@ export default function WeddingDetailPage({
     setTimeout(() => setSaveStatus("idle"), 2000);
   }, [couple, id]);
 
-  function updateWedding(field: keyof WeddingDetail, value: string | null) {
+  function updateWedding(field: keyof WeddingDetail, value: string | number | null) {
     setWedding((prev) => prev ? { ...prev, [field]: value } : prev);
   }
 
@@ -371,17 +371,32 @@ export default function WeddingDetailPage({
             <div className="mb-3 grid grid-cols-3 gap-3">
               <div className="rounded-lg border border-border bg-card p-3 text-center">
                 <Camera className="mx-auto mb-1 size-4 text-primary" />
-                <p className="text-lg font-semibold text-foreground">{wedding.num_photographers}</p>
+                <EditableCell
+                  value={String(wedding.num_photographers)}
+                  onChange={(v) => updateWedding("num_photographers", Math.max(0, parseInt(v, 10) || 0))}
+                  placeholder="0"
+                  displayClassName="text-lg font-semibold text-foreground"
+                />
                 <p className="text-[10px] text-muted-foreground">Photographers</p>
               </div>
               <div className="rounded-lg border border-border bg-card p-3 text-center">
                 <Video className="mx-auto mb-1 size-4 text-accent" />
-                <p className="text-lg font-semibold text-foreground">{wedding.num_videographers}</p>
+                <EditableCell
+                  value={String(wedding.num_videographers)}
+                  onChange={(v) => updateWedding("num_videographers", Math.max(0, parseInt(v, 10) || 0))}
+                  placeholder="0"
+                  displayClassName="text-lg font-semibold text-foreground"
+                />
                 <p className="text-[10px] text-muted-foreground">Videographers</p>
               </div>
               <div className="rounded-lg border border-border bg-card p-3 text-center">
                 <Users className="mx-auto mb-1 size-4 text-muted-foreground" />
-                <p className="text-lg font-semibold text-foreground">{wedding.num_assistants}</p>
+                <EditableCell
+                  value={String(wedding.num_assistants)}
+                  onChange={(v) => updateWedding("num_assistants", Math.max(0, parseInt(v, 10) || 0))}
+                  placeholder="0"
+                  displayClassName="text-lg font-semibold text-foreground"
+                />
                 <p className="text-[10px] text-muted-foreground">Assistants</p>
               </div>
             </div>
