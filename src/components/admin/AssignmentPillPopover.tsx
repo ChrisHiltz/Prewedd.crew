@@ -122,9 +122,17 @@ export function AssignmentPillPopover({
   const [state, setState] = useState<PopoverState>({ kind: "menu" });
 
   // Reset state whenever the popover closes so reopening shows menu, not
-  // a stale conflict/notify screen.
+  // a stale conflict/notify screen. If closing from the "notify" state
+  // (e.g. Escape or outside-click), fire the deferred refetch — the
+  // mutation already committed but we delayed the refetch to keep the
+  // popover alive for the prompt.
   function handleOpenChange(next: boolean) {
-    if (!next) setState({ kind: "menu" });
+    if (!next) {
+      if (state.kind === "notify") {
+        onAssignmentsChanged();
+      }
+      setState({ kind: "menu" });
+    }
     setOpen(next);
   }
 
@@ -266,11 +274,9 @@ export function AssignmentPillPopover({
     data: Record<string, unknown>,
     newRole: string
   ) {
-    // Fire the cross-surface refetch IMMEDIATELY on commit, per spec §Props.
-    onAssignmentsChanged();
-
     // noop — no DB write, no prompt.
     if (data.noop === true) {
+      onAssignmentsChanged();
       setState({ kind: "flash" });
       return;
     }
@@ -289,10 +295,14 @@ export function AssignmentPillPopover({
         !assignment.shooter_has_user ||
         (other && !other.shooter_has_user)
       ) {
+        onAssignmentsChanged();
         setState({ kind: "flash" });
         return;
       }
 
+      // DEFER the refetch until the notify prompt is dismissed. If we refetch
+      // now, base-ui may close the popover (trigger element gets replaced by
+      // the re-render) before the admin sees the "Notify?" prompt.
       setState({
         kind: "notify",
         newRole,
@@ -306,10 +316,12 @@ export function AssignmentPillPopover({
     // Everything else (updated / removed_other / added_to) → single-recipient
     // role_change. Per spec §Notify prompt normalization table.
     if (!assignment.shooter_has_user) {
+      onAssignmentsChanged();
       setState({ kind: "flash" });
       return;
     }
 
+    // DEFER the refetch until notify prompt is dismissed (same reason as swap).
     setState({
       kind: "notify",
       newRole,
@@ -320,8 +332,9 @@ export function AssignmentPillPopover({
   async function handleNotifyYes(
     s: Extract<PopoverState, { kind: "notify" }>
   ) {
-    // Close immediately — the POST fires in the background, toasts surface
-    // outcomes. The mutation already committed.
+    // Close the popover — handleOpenChange detects we're leaving "notify"
+    // state and fires the deferred onAssignmentsChanged(). The POST fires
+    // in the background after that; toasts surface any email failures.
     handleOpenChange(false);
 
     const body: Record<string, unknown> = {
