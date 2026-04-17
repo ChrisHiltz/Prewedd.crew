@@ -420,14 +420,14 @@ export default function AdminCalendarPage() {
           coupleNames={assignTarget.wedding.couple_names}
           role={assignTarget.role}
           onAssigned={handleAssigned}
-          onShooterClick={openShooterPanel}
+          onShooterClick={activeCoupleId ? openShooterFromCouple : openShooterPanel}
         />
       )}
 
-      {/* Shooter info panel */}
-      <ShooterPanel shooterId={activeShooterId} onClose={() => setActiveShooterId(null)} />
-
-      {/* Couple info panel */}
+      {/* Couple info panel — renders first so ShooterPanel (z-60) renders
+          on top of CouplePanel (z-55) when both are open simultaneously.
+          DOM order matters when z-indexes are close and both are fixed to
+          the same right-0 position. */}
       <CouplePanel
         coupleId={activeCoupleId}
         onClose={() => setActiveCoupleId(null)}
@@ -435,6 +435,11 @@ export default function AdminCalendarPage() {
         onAssignClick={handleAssignClick}
         onAssignmentsChanged={refreshAllAssignments}
       />
+
+      {/* Shooter info panel — z-[60], rendered after CouplePanel so it
+          reliably sits on top when both are open (e.g. View Profile from
+          within CouplePanel). */}
+      <ShooterPanel shooterId={activeShooterId} onClose={() => setActiveShooterId(null)} />
 
     </div>
   );
