@@ -10,23 +10,22 @@ import {
   Calendar,
   MapPin,
   FileText,
-  UserPlus,
   Clock,
   Camera,
   Video,
   Users,
   ExternalLink,
   User,
-  X,
-  Trash2,
 } from "lucide-react";
-import { RoleIcon, RoleIcons } from "@/components/ui/role-icon";
+import { RoleIcon } from "@/components/ui/role-icon";
 import { EditableCell } from "@/components/ui/editable-cell";
 import { CollapsibleSection } from "@/components/ui/collapsible-section";
 import { AutosaveIndicator, type SaveStatus } from "@/components/ui/autosave-indicator";
 import { cn } from "@/lib/utils";
-import { ROLE_LABELS } from "@/lib/utils/roles";
+import { ROLE_LABELS, ROLE_SHORT_LABELS } from "@/lib/utils/roles";
 import { getNeededRoles, getUnfilledRoles } from "@/lib/utils/scheduling";
+import { AssignmentPillPopover, type PopoverAssignment } from "@/components/admin/AssignmentPillPopover";
+import { AssignSlideOut } from "@/components/admin/AssignSlideOut";
 
 interface WeddingDetail {
   id: string;
@@ -83,6 +82,7 @@ interface Assignment {
     name: string;
     headshot_url: string | null;
     roles: string[];
+    user_id: string | null;
   } | null;
 }
 
@@ -119,7 +119,7 @@ export default function WeddingDetailPage({
   const [couple, setCouple] = useState<CoupleInfo | null>(null);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showAddShooter, setShowAddShooter] = useState(false);
+  const [assignRole, setAssignRole] = useState<string | null>(null);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const initialLoadRef = useRef(true);
@@ -128,7 +128,7 @@ export default function WeddingDetailPage({
     const supabase = createClient();
     const { data } = await supabase
       .from("assignments")
-      .select("id, role, status, brief_read, quiz_passed, shooter_profiles(id, name, headshot_url, roles)")
+      .select("id, role, status, brief_read, quiz_passed, shooter_profiles(id, name, headshot_url, roles, user_id)")
       .eq("wedding_id", id);
 
     if (data) {
@@ -139,12 +139,6 @@ export default function WeddingDetailPage({
         }))
       );
     }
-  }
-
-  async function removeAssignment(assignmentId: string) {
-    const supabase = createClient();
-    await supabase.from("assignments").delete().eq("id", assignmentId);
-    setAssignments((prev) => prev.filter((a) => a.id !== assignmentId));
   }
 
   useEffect(() => {
@@ -336,23 +330,17 @@ export default function WeddingDetailPage({
             Edit Brief
           </Button>
         </Link>
-        <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setShowAddShooter(true)}>
-          <UserPlus className="size-3.5" />
-          Add Shooter
-        </Button>
       </div>
 
-      {/* Add Shooter Panel */}
-      {showAddShooter && (
-        <AddShooterPanel
+      {/* Assign slide-out — opened by unfilled role "+" buttons in the staffing section */}
+      {assignRole && (
+        <AssignSlideOut
+          open={assignRole !== null}
+          onOpenChange={(open) => { if (!open) setAssignRole(null); }}
           weddingId={id}
           weddingDate={wedding.date}
-          weddingDetail={wedding}
-          coupleName={couple?.names || ""}
-          venueName={wedding.venue_name || ""}
-          assignedShooterIds={assignments.map((a) => a.shooter_profiles?.id || "").filter(Boolean)}
-          assignedRoles={assignments.map((a) => a.role)}
-          onClose={() => setShowAddShooter(false)}
+          coupleNames={couple?.names || "TBD"}
+          role={assignRole}
           onAssigned={loadAssignments}
         />
       )}
@@ -397,42 +385,104 @@ export default function WeddingDetailPage({
                 <p className="text-[10px] text-muted-foreground">Assistants</p>
               </div>
             </div>
-            {/* Team list */}
+            {/* Team list — each row opens AssignmentPillPopover (same as kanban + CouplePanel) */}
             {assignments.length === 0 ? (
               <p className="py-3 text-center text-xs text-muted-foreground">No shooters assigned</p>
-            ) : (
-              <div className="space-y-1.5">
-                {assignments.map((a) => (
-                  <div key={a.id} className="flex items-center justify-between rounded-lg border border-border bg-card px-3 py-2">
-                    <div className="flex items-center gap-2.5">
-                      <div className="relative size-7 shrink-0 overflow-hidden rounded-full bg-muted">
-                        {a.shooter_profiles?.headshot_url ? (
-                          <Image src={a.shooter_profiles.headshot_url} alt={a.shooter_profiles.name} fill className="object-cover" />
-                        ) : (
-                          <div className="flex size-full items-center justify-center text-[9px] font-bold text-muted-foreground">
-                            {a.shooter_profiles?.name.charAt(0) || "?"}
+            ) : (() => {
+              const popoverAssignments: PopoverAssignment[] = assignments
+                .filter((x) => x.shooter_profiles !== null)
+                .map((x) => ({
+                  id: x.id,
+                  role: x.role,
+                  shooter_id: x.shooter_profiles!.id,
+                  shooter_name: x.shooter_profiles!.name,
+                  shooter_roles: x.shooter_profiles!.roles ?? [],
+                  shooter_has_user: x.shooter_profiles!.user_id != null,
+                }));
+
+              return (
+                <div className="space-y-1.5">
+                  {assignments.map((a) => {
+                    const sp = a.shooter_profiles;
+                    if (!sp) {
+                      return (
+                        <div key={a.id} className="flex items-center gap-2.5 rounded-lg border border-border bg-card px-3 py-2">
+                          <div className="relative size-7 shrink-0 overflow-hidden rounded-full bg-muted">
+                            <div className="flex size-full items-center justify-center text-[9px] font-bold text-muted-foreground">?</div>
                           </div>
-                        )}
-                      </div>
-                      <div>
-                        <p className="text-xs font-medium text-foreground">{a.shooter_profiles?.name}</p>
-                        <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                          <RoleIcon role={a.role} size="xs" />
-                          {ROLE_LABELS[a.role] || a.role}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <span className={cn("size-1.5 rounded-full", a.brief_read ? "bg-success" : "bg-muted-foreground/30")} title={a.brief_read ? "Brief read" : "Unread"} />
-                      <span className={cn("size-1.5 rounded-full", a.quiz_passed ? "bg-success" : "bg-muted-foreground/30")} title={a.quiz_passed ? "Quiz passed" : "Not passed"} />
-                      <button type="button" onClick={() => removeAssignment(a.id)} className="ml-1 rounded p-0.5 text-muted-foreground hover:bg-error/10 hover:text-error" title="Remove">
-                        <Trash2 className="size-3" />
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+                          <p className="text-xs font-medium text-muted-foreground">Unknown shooter</p>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <AssignmentPillPopover
+                        key={a.id}
+                        assignment={{
+                          id: a.id,
+                          role: a.role,
+                          shooter_id: sp.id,
+                          shooter_name: sp.name,
+                          shooter_roles: sp.roles ?? [],
+                          shooter_has_user: sp.user_id != null,
+                        }}
+                        weddingAssignments={popoverAssignments}
+                        onViewProfile={() => {}}
+                        onAssignmentsChanged={loadAssignments}
+                      >
+                        <button type="button" className="flex w-full items-center justify-between rounded-lg border border-border bg-card px-3 py-2 text-left hover:border-primary/50 hover:bg-primary/5 transition-colors">
+                          <div className="flex items-center gap-2.5">
+                            <div className="relative size-7 shrink-0 overflow-hidden rounded-full bg-muted">
+                              {sp.headshot_url ? (
+                                <Image src={sp.headshot_url} alt={sp.name} fill className="object-cover" />
+                              ) : (
+                                <div className="flex size-full items-center justify-center text-[9px] font-bold text-muted-foreground">
+                                  {sp.name.charAt(0)}
+                                </div>
+                              )}
+                            </div>
+                            <div>
+                              <p className="text-xs font-medium text-foreground">{sp.name}</p>
+                              <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                                <RoleIcon role={a.role} size="xs" />
+                                {ROLE_LABELS[a.role] || a.role}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <span className={cn("size-1.5 rounded-full", a.brief_read ? "bg-success" : "bg-muted-foreground/30")} title={a.brief_read ? "Brief read" : "Unread"} />
+                            <span className={cn("size-1.5 rounded-full", a.quiz_passed ? "bg-success" : "bg-muted-foreground/30")} title={a.quiz_passed ? "Quiz passed" : "Not passed"} />
+                          </div>
+                        </button>
+                      </AssignmentPillPopover>
+                    );
+                  })}
+                </div>
+              );
+            })()}
+            {/* Unfilled role "+" buttons — opens AssignSlideOut for each role */}
+            {(() => {
+              const neededRoles = getNeededRoles(wedding);
+              const assignedRoles = assignments.map((a) => a.role);
+              const unfilled = getUnfilledRoles(neededRoles, assignedRoles);
+              if (unfilled.length === 0) return null;
+              return (
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  {unfilled.map((role, i) => (
+                    <button
+                      key={`${role}-${i}`}
+                      type="button"
+                      onClick={() => setAssignRole(role)}
+                      className="inline-flex items-center gap-1 rounded-md border border-dashed border-muted-foreground/40 px-2 py-1 text-[10px] font-medium text-muted-foreground transition-colors hover:border-primary hover:bg-primary/5 hover:text-primary"
+                    >
+                      <span>+</span>
+                      <RoleIcon role={role} size="xs" />
+                      <span>{ROLE_SHORT_LABELS[role as keyof typeof ROLE_SHORT_LABELS] ?? role}</span>
+                    </button>
+                  ))}
+                </div>
+              );
+            })()}
           </CollapsibleSection>
 
           {/* Couple Profile */}
@@ -575,186 +625,3 @@ function DocLink({ label, url }: { label: string; url: string }) {
 
 // --- Add Shooter Panel ---
 
-interface ConflictInfo {
-  id: string;
-  couple_name: string;
-  date: string;
-  role: string;
-}
-
-function AddShooterPanel({
-  weddingId, weddingDate, weddingDetail, coupleName, venueName,
-  assignedShooterIds, assignedRoles, onClose, onAssigned,
-}: {
-  weddingId: string; weddingDate: string; weddingDetail: WeddingDetail;
-  coupleName: string; venueName: string; assignedShooterIds: string[];
-  assignedRoles: string[]; onClose: () => void; onAssigned: () => void;
-}) {
-  const [shooters, setShooters] = useState<{
-    id: string; name: string; headshot_url: string | null; roles: string[];
-  }[]>([]);
-  const [loadingShooters, setLoadingShooters] = useState(true);
-  const [assigningId, setAssigningId] = useState<string | null>(null);
-  const [error, setError] = useState("");
-  const [pendingSwap, setPendingSwap] = useState<{
-    shooterId: string; role: string; conflict: ConflictInfo;
-  } | null>(null);
-
-  // Suppress unused var warnings — venueName is kept for future use via the API
-  void coupleName; void venueName;
-
-  const neededRoles = getNeededRoles(weddingDetail);
-  const unfilledRoles = getUnfilledRoles(neededRoles, assignedRoles);
-
-  useEffect(() => {
-    async function loadAvailable() {
-      const supabase = createClient();
-      const { data: allShooters } = await supabase
-        .from("shooter_profiles")
-        .select("id, name, headshot_url, roles")
-        .order("name");
-      setShooters(allShooters ?? []);
-      setLoadingShooters(false);
-    }
-    loadAvailable();
-  }, [weddingDate]);
-
-  async function handleAssign(shooterId: string, role: string, swapFromWeddingId?: string) {
-    setError("");
-    setAssigningId(shooterId);
-
-    const body: Record<string, string> = { wedding_id: weddingId, shooter_id: shooterId, role };
-    if (swapFromWeddingId) body.swap_from_wedding_id = swapFromWeddingId;
-
-    try {
-      const res = await fetch("/api/assign", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-
-      const data = await res.json() as { error?: string; message?: string; conflicting_wedding?: ConflictInfo };
-
-      if (!res.ok) {
-        if (data.error === "conflict" && data.conflicting_wedding) {
-          setPendingSwap({ shooterId, role, conflict: data.conflicting_wedding });
-          setAssigningId(null);
-          return;
-        }
-        setError(data.message ?? data.error ?? "Assignment failed");
-        setAssigningId(null);
-        return;
-      }
-
-      setPendingSwap(null);
-      setAssigningId(null);
-      onAssigned();
-    } catch {
-      setError("Network error — please try again.");
-      setAssigningId(null);
-    }
-  }
-
-  const visibleShooters = shooters.filter(
-    (s) => !assignedShooterIds.includes(s.id) && s.roles.some((r: string) => unfilledRoles.includes(r))
-  );
-
-  return (
-    <div className="mb-4 rounded-lg border border-border bg-card p-4">
-      <div className="mb-3 flex items-center justify-between">
-        <div>
-          <h2 className="text-sm font-semibold text-foreground">Add Shooter</h2>
-          <p className="mt-0.5 text-[10px] text-muted-foreground">Available shooters with matching roles</p>
-        </div>
-        <button type="button" onClick={onClose} className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground">
-          <X className="size-4" />
-        </button>
-      </div>
-
-      {pendingSwap && (
-        <div className="mb-3 rounded-lg border border-warning/50 bg-warning/10 p-3">
-          <p className="text-xs font-medium text-foreground">
-            Scheduling conflict — this shooter is already assigned to{" "}
-            <strong>{pendingSwap.conflict.couple_name}</strong> on this date.
-          </p>
-          <p className="mt-1 text-[11px] text-muted-foreground">
-            Swap them to this wedding instead? They will be removed from{" "}
-            {pendingSwap.conflict.couple_name}.
-          </p>
-          <div className="mt-2 flex gap-2">
-            <button
-              type="button"
-              onClick={() => handleAssign(pendingSwap.shooterId, pendingSwap.role, pendingSwap.conflict.id)}
-              className="rounded-md bg-warning px-3 py-1.5 text-[11px] font-medium text-warning-foreground hover:bg-warning/90"
-            >
-              Swap
-            </button>
-            <button
-              type="button"
-              onClick={() => setPendingSwap(null)}
-              className="rounded-md border border-border px-3 py-1.5 text-[11px] font-medium text-muted-foreground hover:bg-muted"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
-
-      {unfilledRoles.length > 0 && (
-        <div className="mb-3 flex items-center gap-2">
-          <span className="text-[10px] text-muted-foreground">Needed:</span>
-          {unfilledRoles.map((r) => <RoleIcon key={r} role={r} size="sm" showLabel />)}
-        </div>
-      )}
-      {error && <p className="mb-2 text-xs text-error">{error}</p>}
-      {loadingShooters ? (
-        <p className="py-4 text-center text-xs text-muted-foreground">Loading...</p>
-      ) : visibleShooters.length === 0 ? (
-        <p className="py-4 text-center text-xs text-muted-foreground">
-          {unfilledRoles.length === 0 ? "All roles filled." : "No available shooters."}
-        </p>
-      ) : (
-        <div className="max-h-64 space-y-1.5 overflow-y-auto">
-          {visibleShooters.map((s) => {
-            const matchingRoles = s.roles.filter((r: string) => unfilledRoles.includes(r));
-            return (
-              <div key={s.id} className="flex items-center gap-2.5 rounded-lg border border-border px-3 py-2">
-                <div className="relative size-7 shrink-0 overflow-hidden rounded-full bg-muted">
-                  {s.headshot_url ? (
-                    <Image src={s.headshot_url} alt={s.name} fill className="object-cover" />
-                  ) : (
-                    <div className="flex size-full items-center justify-center text-[9px] font-bold text-muted-foreground">
-                      {s.name.charAt(0)}
-                    </div>
-                  )}
-                </div>
-                <div className="flex-1">
-                  <p className="text-xs font-medium text-foreground">{s.name}</p>
-                  <RoleIcons roles={s.roles} size="xs" />
-                </div>
-                <div className="flex items-center gap-1">
-                  {matchingRoles.map((role: string) => (
-                    <button
-                      key={role}
-                      type="button"
-                      disabled={assigningId === s.id}
-                      onClick={() => handleAssign(s.id, role)}
-                      className="flex items-center gap-1 rounded-md border border-border px-2 py-1 text-[10px] font-medium transition-colors hover:border-primary hover:bg-primary/5 disabled:opacity-50"
-                      title={`Assign as ${ROLE_LABELS[role] ?? role}`}
-                    >
-                      <RoleIcon role={role} size="xs" />
-                      <span className="hidden sm:inline">{assigningId === s.id ? "..." : "Assign"}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-      <div className="mt-3 flex justify-end">
-        <Button type="button" variant="outline" size="sm" onClick={onClose}>Done</Button>
-      </div>
-    </div>
-  );
-}
