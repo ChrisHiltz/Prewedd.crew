@@ -117,8 +117,12 @@ export default function AdminCalendarPage() {
 
   // ── Load kanban data (all future weddings) ─────────────────────────────────
 
-  const loadKanbanData = useCallback(async () => {
-    setKanbanLoading(true);
+  const loadKanbanData = useCallback(async (opts?: { showLoading?: boolean }) => {
+    // Only show the loading skeleton on the INITIAL load, not on background
+    // refreshes triggered by popover mutations. This prevents the kanban
+    // "flashing" while the refetch runs — the old data stays visible until
+    // the new data arrives and swaps in seamlessly.
+    if (opts?.showLoading !== false) setKanbanLoading(true);
     const supabase = createClient();
 
     const today = new Date();
@@ -284,9 +288,11 @@ export default function AdminCalendarPage() {
   /** Cross-surface refresh triggered by any popover mutation (role change,
    *  swap, remove). Fans out to kanban + grid refetchers (grid is a no-op
    *  when the view isn't mounted). CouplePanel refetches itself internally
-   *  before calling this up-chain. */
+   *  before calling this up-chain. Uses showLoading: false so the kanban
+   *  doesn't flash a loading skeleton — old data stays visible until the
+   *  refetch completes. */
   function refreshAllAssignments() {
-    loadKanbanData();
+    loadKanbanData({ showLoading: false });
     if (view === "grid") loadGridData();
   }
 
