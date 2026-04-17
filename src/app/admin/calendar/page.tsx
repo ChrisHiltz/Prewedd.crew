@@ -428,7 +428,13 @@ export default function AdminCalendarPage() {
       <ShooterPanel shooterId={activeShooterId} onClose={() => setActiveShooterId(null)} />
 
       {/* Couple info panel */}
-      <CouplePanel coupleId={activeCoupleId} onClose={() => setActiveCoupleId(null)} onShooterClick={openShooterFromCouple} onAssignClick={handleAssignClick} />
+      <CouplePanel
+        coupleId={activeCoupleId}
+        onClose={() => setActiveCoupleId(null)}
+        onShooterClick={openShooterFromCouple}
+        onAssignClick={handleAssignClick}
+        onAssignmentsChanged={refreshAllAssignments}
+      />
 
     </div>
   );
